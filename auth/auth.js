@@ -3,7 +3,6 @@ const utils = require('../utils/utils.js');
 const db = require('../database/mysql/mysql.js');
 const log = require('../utils/log.js');
 
-
 module.exports.vaidateAppVersion = ( request ) =>{
   log.logAuth('Receiving request from server : ' + JSON.stringify(request) );
   log.logAuth(`Validating AppVersion ( ${request.deviceInfo.OS} ) on config ` );
@@ -78,6 +77,7 @@ module.exports.updateUserLocation = ( request  ) => {
       log.logAuth(`${rows.affectedRows} - for good response `);
       var numRows = rows.affectedRows;
       if( numRows !== 0 ){
+        utils.notificationService( 'ios' );
         resolve( generateGoodResponse( rows ) );
       }else{
         return db.insertUserLocationInfo( request );

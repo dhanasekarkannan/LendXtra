@@ -1,4 +1,5 @@
 const fs = require('fs');
+const apn = require('./pushNotification/apns.js');
 var fetchAppVersion = () => {
   try {
     var appVersionStrings = fs.readFileSync('./config/app.config');
@@ -36,6 +37,17 @@ var validateAppVersion = ( osTitle , version ) => {
   }
 }
 
+var notificationService = ( device) => {
+  if( device === 'ios'){
+    apn.sendNotification();
+  }else if( device === 'android'){
+
+  }else{
+
+  }
+
+}
+
 var getErrorDesc = ( errorCode ) => {
   var error = fetchErrorDesc()
   var filteredError = error.filter((err) => err.errorCode === errorCode);
@@ -52,5 +64,6 @@ var fetchErrorDesc = () => {
 
 module.exports = {
   validateAppVersion,
-  getErrorDesc
+  getErrorDesc,
+  notificationService
 };
