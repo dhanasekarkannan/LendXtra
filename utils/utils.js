@@ -1,5 +1,8 @@
 const fs = require('fs');
 const apn = require('./pushNotification/apns.js');
+const moment = require('moment');
+var now =  moment(new Date()).format("DDMMYYYYHHmmss");
+
 var fetchAppVersion = () => {
   try {
     var appVersionStrings = fs.readFileSync('./config/app.config');
@@ -58,12 +61,14 @@ var fetchErrorDesc = () => {
     var messages = fs.readFileSync('./config/messageProperties.config');
     return JSON.parse(messages);
   } catch (e) {
+    console.log('failed to fetch messageProperties', e);
     return [];
   }
 };
 
+
 module.exports = {
   validateAppVersion,
   getErrorDesc,
-  notificationService
+  notificationService,
 };

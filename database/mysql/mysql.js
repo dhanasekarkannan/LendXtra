@@ -22,13 +22,16 @@ return new Promise( (resolve, reject) => {
         reject ( "0100" );
       }
       log.logDBMysql('connected as id ' + connection.threadId );
-      var query = "SELECT * FROM lend_database.lend_user_info WHERE username = '" +request.userInfo.username + "' OR mobile_no = '" +request.userInfo.username + "' OR email_id = '" +request.userInfo.username + "' OR userid = '" +request.userInfo.username + "'"
-      connection.query( query,function(err,rows){
+      var query = 'SELECT * FROM lend_database.lend_user_info WHERE mobileNo = TRIM( ? ) OR emailId = TRIM( ?)';
+      connection.query( query,[ request.userInfo.mobileNo, request.userInfo.emailId ],function(err,rows){
           log.logDBMysql( " Relesing Database Connection ", rows);
           connection.release();
           if(!err) {
               log.logDBMysql( " sucessfully fetched rows : ", rows);
               resolve( rows );
+          }else{
+            log.logDBMysql( `failed fetched rows :  ${err.message}`);
+            reject( "0104" );
           }
       });
 
@@ -41,22 +44,26 @@ return new Promise( (resolve, reject) => {
 
 }
 
-module.exports.validateUserName = ( request ) => {
+module.exports.validateUserLogin = ( request ) => {
 return new Promise( (resolve, reject) => {
-  log.logDBMysql(" validate User called successfully");
+  log.logDBMysql(" validate validateUserLogin called successfully");
   pool.getConnection(function(err,connection){
       if (err) {
         log.logDBMysql( "Error in connection database");
         reject ( "0100" );
       }
       log.logDBMysql('connected as id ' + connection.threadId );
-      var query = "SELECT * FROM lend_database.lend_user_info WHERE username = '" + request.userInfo.username + "'";
-      connection.query( query,function(err,rows){
+      var query = "SELECT * FROM lend_database.lend_user_info WHERE mobileNo = TRIM( ? ) AND password = TRIM( ? )";
+      connection.query( query,[ request.userInfo.mobileNo, request.userInfo.password],function(err,rows){
           log.logDBMysql( " Relesing Database Connection ", rows);
           connection.release();
           if(!err) {
-              log.logDBMysql( " sucessfully fetched rows : ", rows);
-              resolve( rows );
+            log.logDBMysql( " sucessfully fetched rows validateUserLogin() : ", rows);
+            resolve( rows );
+
+          }else{
+            log.logDBMysql( `failed to fetch rows for validateUserLogin() :  ${err.message}`);
+            reject( "0107" );
           }
       });
 
@@ -77,17 +84,18 @@ return new Promise( (resolve, reject) => {
         reject ( "0100" );
       }
       log.logDBMysql('connected as id ' + connection.threadId );
-      var now =  moment(new Date()).format("YYYY-MM-DD HH:mm:ss");
-      var query = "INSERT INTO lend_database.lend_user_info (userid, username, mobile_no, email_id, password,regTime) VALUES ('" + request.userInfo.username + " ', '" + request.userInfo.username +  " ', '" + request.userInfo.mobileNo +  " ', '" + request.userInfo.emailId + " ', '" + request.userInfo.password +  " ', '" + now + "')";
-      connection.query( query,function(err,rows){
+      var query = "INSERT INTO lend_database.lend_user_info ( mobileNo, emailId, password, regTime, deviceId, deviceToken, deviceType, firstLogin, deviceModel ) VALUES ( TRIM( ? ), TRIM( ?), TRIM( ? ),TRIM( ?), TRIM( ? ), TRIM( ?), TRIM( ? ), TRIM( ? ), TRIM( ?))";
+      connection.query( query,[request.userInfo.mobileNo,request.userInfo.emailId,request.userInfo.password, now, request.deviceInfo.deviceId, request.deviceInfo.deviceToken, request.deviceInfo.deviceType, "001", request.deviceInfo.deviceModel],function(err,rows){
           log.logDBMysql( " Relesing Database Connection ", rows);
           connection.release();
           if(!err) {
+              console.log(" sucessfully inserted row : ", rows);
               log.logDBMysql( " sucessfully inserted row : ", rows);
               resolve( rows );
           }else{
-              log.logDBMysql( " failed to inserted row : ", err);
-              console.log( "failed to inserted row : ", err)
+              log.logDBMysql( ` failed to inserted row : ${err}` );
+              reject( "0105" );
+
           }
       });
 
@@ -108,7 +116,7 @@ return new Promise( (resolve, reject) => {
         reject ( "0100" );
       }
       log.logDBMysql('connected as id ' + connection.threadId );
-      var query = "INSERT INTO lend_database.lend_user_location_info (userid, latitude, longitude, lastUpdate) VALUES ( TRIM(?), TRIM(?), TRIM(?), TRIM(?) )";
+      var query = "INSERT INTO lend_database.lend_user_location_info (userId, latitude, longitude, lastUpdate) VALUES ( TRIM(?), TRIM(?), TRIM(?), TRIM(?) )";
       connection.query( query, [ request.userInfo.username, request.locationInfo.latitude, request.locationInfo.longitude, now ],function(err,rows){
           log.logDBMysql( " Relesing Database Connection ", rows);
           connection.release();
@@ -138,7 +146,7 @@ return new Promise( (resolve, reject) => {
         reject ( "0100" );
       }
       log.logDBMysql('connected as id ' + connection.threadId );
-      log.logDBMysql('UPDATING record for userid ' + request.userInfo.username );
+      log.logDBMysql('UPDATING record for userId ' + request.userInfo.username );
       var query = 'UPDATE lend_database.lend_user_location_info SET latitude = TRIM(?), longitude = TRIM(?), lastUpdate = TRIM(?)  WHERE userid = TRIM(?)';
       connection.query( query, [ request.locationInfo.latitude , request.locationInfo.longitude , now ,request.userInfo.username], function(err,rows){
           log.logDBMysql( " Relesing Database Connection ", rows);
@@ -149,6 +157,162 @@ return new Promise( (resolve, reject) => {
           }else{
               log.logDBMysql( " failed to updated row : ", err);
               console.log( "failed to updated row : ", err)
+          }
+      });
+
+      connection.on('error', function(err) {
+        log.logDBMysql( "Error in connection database");
+        reject ( "0100" );
+      });
+});
+});
+}
+
+module.exports.insertUserKYC = ( request ) => {
+return new Promise( (resolve, reject) => {
+  log.logDBMysql(" insertUserKYC() called successfully");
+  pool.getConnection(function(err,connection){
+      if (err) {
+        log.logDBMysql( "Error in connection database");
+        reject ( "0100" );
+      }
+      log.logDBMysql('connected as id ' + connection.threadId );
+      var query = "INSERT INTO lend_database.lend_user_kyc_info (userId, firstName, lastName, sex, dob, idProof, idProofDesc) VALUES ( TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?) )";
+      connection.query( query, [ request.userInfo.userId, request.userInfo.firstName, request.userInfo.lastName, request.userInfo.sex, request.userInfo.dob, , request.userInfo.idProof, request.userInfo.idProofDesc ],function(err,rows){
+          log.logDBMysql( " Relesing Database Connection ", rows);
+          connection.release();
+          if(!err) {
+              log.logDBMysql( " sucessfully inserted insertUserKYC() record : " + rows);
+              resolve( rows );
+          }else{
+              log.logDBMysql( " failed to insert insertUserKYC() : " + err);
+              reject("0110");
+          }
+      });
+
+      connection.on('error', function(err) {
+        log.logDBMysql( "Error in connection database");
+        reject ( "0100" );
+      });
+});
+});
+}
+
+module.exports.updateUserKYC = ( request ) => {
+return new Promise( (resolve, reject) => {
+  log.logDBMysql(" updateUserLocation called successfully");
+  pool.getConnection(function(err,connection){
+      if (err) {
+        log.logDBMysql( "Error in connection database");
+        reject ( "0100" );
+      }
+      log.logDBMysql('connected as id ' + connection.threadId );
+      log.logDBMysql('UPDATING record for userId ' + request.userInfo.username );
+      var query = 'UPDATE lend_database.lend_user_kyc_info SET firstName = TRIM(?), lastName = TRIM(?), middleName = TRIM(?),sex = TRIM(?), dob = TRIM(?), idProof = Trim(?), idProofDesc = Trim(?)  WHERE userId = TRIM(?)';
+      connection.query( query, [ request.userInfo.firstName , request.userInfo.lastName , request.userInfo.middleName ,request.userInfo.sex, request.userInfo.dob, request.userInfo.idProof, request.userInfo.idProofDesc, request.userInfo.userId], function(err,rows){
+          log.logDBMysql( " Relesing Database Connection ", rows);
+          connection.release();
+          if(!err) {
+              log.logDBMysql( " sucessfully updated updateUserKYC() record : " + rows);
+              resolve( rows );
+          }else{
+              log.logDBMysql( " failed to updat updateUserKYC() record  : " + err);
+              reject( "0109" );
+          }
+      });
+
+      connection.on('error', function(err) {
+        log.logDBMysql( "Error in connection database");
+        reject ( "0100" );
+      });
+});
+});
+}
+
+
+module.exports.updateLoginInfo = ( request ) => {
+return new Promise( (resolve, reject) => {
+  log.logDBMysql(" updateLoginInfo called successfully");
+  pool.getConnection(function(err,connection){
+      if (err) {
+        log.logDBMysql( "Error in connection database");
+        reject ( "0100" );
+      }
+      log.logDBMysql('connected as id ' + connection.threadId );
+      log.logDBMysql('UPDATING record for userId ' + JSON.stringify(request) );
+      var query = 'UPDATE lend_database.lend_user_info SET lastLogin = TRIM(?) WHERE userId = TRIM(?)';
+      connection.query( query, [ now ,request[0].userId], function(err,rows){
+          log.logDBMysql( " Relesing Database Connection ", rows);
+          connection.release();
+          if(!err) {
+              log.logDBMysql( " sucessfully updated LastLogin() : " + rows);
+              resolve( rows );
+          }else{
+              log.logDBMysql( " failed to update LastLogin() : " + err);
+              reject( "0108" )
+          }
+      });
+
+      connection.on('error', function(err) {
+        log.logDBMysql( "Error in connection database");
+        reject ( "0100" );
+      });
+});
+});
+}
+
+module.exports.updateDeviceInfo = ( request, loginUser ) => {
+return new Promise( (resolve, reject) => {
+  log.logDBMysql(" updateDeviceInfo called successfully");
+  pool.getConnection(function(err,connection){
+      if (err) {
+        log.logDBMysql( "Error in connection database");
+        reject ( "0100" );
+      }
+      log.logDBMysql('connected as id ' + connection.threadId );
+      log.logDBMysql('UPDATING record for userId ' + JSON.stringify(request) );
+      var query = 'UPDATE lend_database.lend_user_info SET deviceId = TRIM(?), deviceType = TRIM(?), deviceToken = TRIM(?), deviceModel = TRIM( ? ) WHERE userId = TRIM(?)';
+      connection.query( query, [ request.deviceInfo.deviceId, request.deviceInfo.deviceType, request.deviceInfo.deviceToken, request.deviceInfo.deviceModel , loginUser[0].userId], function(err,rows){
+          log.logDBMysql( " Relesing Database Connection ", rows);
+          connection.release();
+          if(!err) {
+              log.logDBMysql( " sucessfully updated LastLogin() : " + rows);
+              resolve( rows );
+          }else{
+              log.logDBMysql( " failed to update LastLogin() : " + err);
+              reject( "0108" )
+          }
+      });
+
+      connection.on('error', function(err) {
+        log.logDBMysql( "Error in connection database");
+        reject ( "0100" );
+      });
+});
+});
+}
+
+
+module.exports.updateDeviceInfo2 = ( request ) => {
+return new Promise( (resolve, reject) => {
+  log.logDBMysql(" updateDeviceInfo2 called successfully");
+  pool.getConnection(function(err,connection){
+      if (err) {
+        log.logDBMysql( "Error in connection database");
+        reject ( "0100" );
+      }
+      log.logDBMysql('connected as id ' + connection.threadId );
+      log.logDBMysql('UPDATING record for userId ' + JSON.stringify(request) );
+      var query = 'UPDATE lend_database.lend_user_info SET deviceId = TRIM(?), deviceType = TRIM(?), deviceToken = TRIM(?), deviceModel = TRIM( ? ) WHERE userId = TRIM(?)';
+      connection.query( query, [ request.deviceInfo.deviceId, request.deviceInfo.deviceType, request.deviceInfo.deviceToken, request.deviceInfo.deviceModel , request.userInfo.userId], function(err,rows){
+          log.logDBMysql( " Relesing Database Connection ", rows);
+          connection.release();
+          if(!err) {
+              log.logDBMysql( " sucessfully updated updateDeviceInfo2() : " + rows);
+              resolve( rows );
+          }else{
+              log.logDBMysql( " failed to update updateDeviceInfo2() : " + err);
+              reject( "0108" )
           }
       });
 

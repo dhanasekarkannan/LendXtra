@@ -40,7 +40,22 @@ app.post('/userRegistration', ( request, response ) => {
     response.status("200").send(err);
   });
 });
-
+app.post('/updateUserKYC', ( request, response ) => {
+  log.logServer( 'Sending request to auth processor =' + JSON.stringify(request.body) );
+  auth.updateDeviceInfo(request.body ).then(( resp ) =>{
+  log.logServer( 'Receiving Good response from auth processor =' + JSON.stringify(resp) );
+  return auth.updateUserKycInfo(request.body);
+  }, (err) => {
+    log.logServer( 'Receiving Bad response from auth processor =' + JSON.stringify(err) );
+    response.status("200").send(err);
+  }).then(( resp ) =>{
+  log.logServer( 'Receiving Good response from auth processor =' + JSON.stringify(resp) );
+  response.status("200").send(resp);
+  }, (err) => {
+    log.logServer( 'Receiving Bad response from auth processor =' + JSON.stringify(err) );
+    response.status("200").send(err);
+  });
+});
 app.post('/updateUserLocation', ( request, response ) => {
   log.logServer( 'Sending request to auth processor =' + JSON.stringify(request.body) );
   auth.updateUserLocation(request.body ).then(( resp ) =>{

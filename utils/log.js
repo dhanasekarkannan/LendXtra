@@ -1,9 +1,24 @@
 const fs = require('fs');
+const moment = require('moment');
+var now = moment(new Date()).format("YYYY-MM-DD HH:mm:ss")
+var createDirectory = () => {
+  var CurrentDate = moment(new Date()).format("DD-MM-YYYY");
+  var tracePath = `./logs/${CurrentDate}`
+  try{
+     fs.mkdirSync( tracePath );
 
+  }catch( err ){
+    if(err.code === 'EEXIST'){
+    }else{
+       console.log( err );
+    }
+  }
+  return tracePath
+}
 var logServer = ( message ) => {
-  var now = new Date().toString();
+  var logPath = createDirectory()
   var log = `${now}:${message}`;
-  fs.appendFile('logs/server.log', log + '\n', (err) => {
+  fs.appendFile(`${logPath}/server.log`, log + '\n', (err) => {
     if(err){
       console.log('Unable to append server.log');
     }
@@ -11,18 +26,18 @@ var logServer = ( message ) => {
 };
 
 var logAuth = ( message ) => {
-  var now = new Date().toString();
+  var logPath = createDirectory()
   var log = `${now}:${message}`;
-  fs.appendFile('logs/auth.log', log + '\n', (err) => {
+  fs.appendFile(`${logPath}/auth.log`, log + '\n', (err) => {
     if(err){
       console.log('Unable to append auth.log');
     }
   });
 };
 var logDBMysql = ( message ) => {
-  var now = new Date().toString();
+  var logPath = createDirectory()
   var log = `${now}:${message}`;
-  fs.appendFile('logs/mysql.log', log + '\n', (err) => {
+  fs.appendFile(`${logPath}/mysql.log`, log + '\n', (err) => {
     if(err){
       console.log('Unable to append auth.log');
     }
