@@ -323,3 +323,33 @@ return new Promise( (resolve, reject) => {
 });
 });
 }
+
+module.exports.insertBorrowRequest = ( request ) => {
+return new Promise( (resolve, reject) => {
+  log.logDBMysql(" insertBorrowRequest() called successfully");
+  pool.getConnection(function(err,connection){
+      if (err) {
+        log.logDBMysql( "Error in connection database");
+        reject ( "0100" );
+      }
+      log.logDBMysql('connected as id ' + connection.threadId );
+      var query = "INSERT INTO lend_database.lend_borrow_request_info ( image, category, brand, bidRange, type, period, note, borrowDesc, bidCurrency, borrowUserId, borrowLoggedTime, status ) VALUES ( TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?) )";
+      connection.query( query, [ request.borrowInfo.image, request.borrowInfo.category, request.borrowInfo.brand, request.borrowInfo.bidRange, request.borrowInfo.type,  request.borrowInfo.period,  request.borrowInfo.note,  request.borrowInfo.borrowDesc, request.borrowInfo.bidCurrency, request.userInfo.userId, now, "001"],function(err,rows){
+          log.logDBMysql( " Relesing Database Connection ", rows);
+          connection.release();
+          if(!err) {
+              log.logDBMysql( " sucessfully inserted insertBorrowRequest() record : " + rows);
+              resolve( rows );
+          }else{
+              log.logDBMysql( " failed to insert insertBorrowRequest() : " + err);
+              reject("0111");
+          }
+      });
+
+      connection.on('error', function(err) {
+        log.logDBMysql( "Error in connection database");
+        reject ( "0100" );
+      });
+});
+});
+}

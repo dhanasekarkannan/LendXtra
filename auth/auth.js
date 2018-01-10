@@ -155,6 +155,33 @@ module.exports.updateUserLocation = ( request  ) => {
   });
 }
 
+module.exports.borrowRequest = ( request  ) => {
+  return new Promise( (resolve, reject ) => {
+    log.logAuth('Receiving request from server : ' + JSON.stringify(request) );
+    log.logAuth(`userRegistration ( ${request.borrowInfo.userId} ) on lend_user_info table ` );
+    db.insertBorrowRequest( request ).then(( rows ) => {
+      log.logAuth(`validateUser() success for mobileNo - (${request.userInfo.userId}) ` );
+      if( rows.length === 0 ){
+        return db.insertUserLoginReg( request );
+      }else{
+        reject( generateBadResponse( "0101" ));
+      }
+    }, (err) => {
+      log.logAuth(`userRegistration() failed for mobileNo - (${request.borrowInfo.mobileNo}) ` )
+      log.logAuth( `${err} - for bad response `)
+      reject( generateBadResponse( err ));
+    }).then( (result) => {
+      log.logAuth(`insertUserLoginReg() success for mobileNo - (${request.borrowInfo.mobileNo}) ` );
+      log.logAuth(`${result} - for good response `);
+      resolve( generateGoodResponse( result ) );
+    }, (err) => {
+      log.logAuth(`insertUserLoginReg() failed for mobileNo - (${request.borrowInfo.mobileNo}) ` )
+      log.logAuth( `${err} - for bad response `)
+      reject( generateBadResponse( err ));
+    });
+  });
+}
+
 
 var generateGoodResponse = ( body ) => {
   log.logAuth( 'Generating Good Response ...' );

@@ -20,6 +20,7 @@ app.post('/appVerisonCheck', ( request, response ) => {
 });
 
 app.post('/userLogin', ( request, response ) => {
+  console.log( 'Receiving request from client =' + JSON.stringify(request.body) );
   log.logServer( 'Sending request to auth processor =' + JSON.stringify(request.body) );
   auth.userLogin(request.body ).then(( resp ) =>{
   log.logServer( 'Receiving Good response from auth processor =' + JSON.stringify(resp) );
@@ -59,6 +60,22 @@ app.post('/updateUserKYC', ( request, response ) => {
 app.post('/updateUserLocation', ( request, response ) => {
   log.logServer( 'Sending request to auth processor =' + JSON.stringify(request.body) );
   auth.updateUserLocation(request.body ).then(( resp ) =>{
+  log.logServer( 'Receiving Good response from auth processor =' + JSON.stringify(resp) );
+  response.status("200").send(resp);
+  }, (err) => {
+    log.logServer( 'Receiving Bad response from auth processor =' + JSON.stringify(err) );
+    response.status("200").send(err);
+  });
+});
+app.post('/borrowRequest', ( request, response ) => {
+  log.logServer( 'Sending request to auth processor =' + JSON.stringify(request.body) );
+  auth.updateDeviceInfo(request.body ).then(( resp ) =>{
+  log.logServer( 'Receiving Good response from auth processor =' + JSON.stringify(resp) );
+  return auth.borrowRequest(request.body);
+  }, (err) => {
+    log.logServer( 'Receiving Bad response from auth processor =' + JSON.stringify(err) );
+    response.status("200").send(err);
+  }).then(( resp ) =>{
   log.logServer( 'Receiving Good response from auth processor =' + JSON.stringify(resp) );
   response.status("200").send(resp);
   }, (err) => {
