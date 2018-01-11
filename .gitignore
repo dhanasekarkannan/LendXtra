@@ -1,3 +1,5 @@
 node_modules/
 logs/
 processor/
+database/mysql/connection.js
+database.json
