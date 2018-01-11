@@ -130,9 +130,9 @@ module.exports.updateUserKycInfo = ( request  ) => {
 module.exports.updateUserLocation = ( request  ) => {
   return new Promise( (resolve, reject ) => {
     log.logAuth('Receiving request from server : ' + JSON.stringify(request) );
-    log.logAuth(`updateUserLocation ( ${request.userInfo.username} ) on lend_user_location_info table ` );
+    log.logAuth(`updateUserLocation ( ${request.userInfo.mobileNo} ) on lend_user_location_info table ` );
     db.updateUserLocation( request ).then(( rows ) => {
-      log.logAuth(`updateUserLocation() success for username - (${request.userInfo.username}) ` );
+      log.logAuth(`updateUserLocation() success for username - (${request.userInfo.mobileNo}) ` );
       log.logAuth(`${rows.affectedRows} - for good response `);
       var numRows = rows.affectedRows;
       if( numRows !== 0 ){
@@ -142,14 +142,14 @@ module.exports.updateUserLocation = ( request  ) => {
         return db.insertUserLocationInfo( request );
       }
     }, ( error ) => {
-      log.logAuth(`updateUserLocation() failed for username - (${request.userInfo.username}) ` )
+      log.logAuth(`updateUserLocation() failed for username - (${request.userInfo.mobileNo}) ` )
       reject( generateBadResponse( error ));
     }).then( ( rows )  => {
-      log.logAuth(`insertUserLocationInfo() success for username - (${request.userInfo.username}) ` );
+      log.logAuth(`insertUserLocationInfo() success for username - (${request.userInfo.mobileNo}) ` );
       log.logAuth(`${rows} - for good response `);
       resolve( generateGoodResponse( rows ) );
     },( error ) => {
-      log.logAuth(`insertUserLocationInfo() failed for username - (${request.userInfo.username}) ` )
+      log.logAuth(`insertUserLocationInfo() failed for username - (${request.userInfo.mobileNo}) ` )
       reject( generateBadResponse( error ));
     } );
   });

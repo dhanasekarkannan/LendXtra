@@ -1,17 +1,12 @@
-const mysql = require('mysql');
 const moment = require('moment');
 const log = require('./../../utils/log.js');
-
-const pool = mysql.createPool({
-    connectionLimit : 100,
-    host : 'localhost',
-    user : 'root',
-    password : 'root',
-    database : 'lend_database',
-    debug : false
-})
+const pool = require('./../../database/mysql/connection.js');
 
 var now =  moment(new Date()).format("YYYY-MM-DD HH:mm:ss");
+
+var dbName = pool.databaseName(function(result) {
+    //
+});
 
 module.exports.validateUser = ( request ) => {
 return new Promise( (resolve, reject) => {
@@ -22,9 +17,9 @@ return new Promise( (resolve, reject) => {
         reject ( "0100" );
       }
       log.logDBMysql('connected as id ' + connection.threadId );
-      var query = 'SELECT * FROM lend_database.lend_user_info WHERE mobileNo = TRIM( ? ) OR emailId = TRIM( ?)';
-      connection.query( query,[ request.userInfo.mobileNo, request.userInfo.emailId ],function(err,rows){
-          log.logDBMysql( " Relesing Database Connection ", rows);
+      var query = 'SELECT * FROM  ' + dbName + '.lend_user_info WHERE mobileNo = TRIM( ? ) OR emailAddr = TRIM( ?) OR mobileToken = TRIM( ?) OR mobileId = TRIM( ?)';
+      connection.query( query,[ request.userInfo.mobileNo, request.userInfo.emailAddr, request.userInfo.mobileToken, request.userInfo.mobileId],function(err,rows){
+          log.logDBMysql( " Releasing Database Connection ", rows);
           connection.release();
           if(!err) {
               log.logDBMysql( " sucessfully fetched rows : ", rows);
@@ -53,9 +48,9 @@ return new Promise( (resolve, reject) => {
         reject ( "0100" );
       }
       log.logDBMysql('connected as id ' + connection.threadId );
-      var query = "SELECT * FROM lend_database.lend_user_info WHERE mobileNo = TRIM( ? ) AND password = TRIM( ? )";
+      var query = "SELECT * FROM  " + dbName + ".lend_user_info WHERE mobileNo = TRIM( ? ) AND password = TRIM( ? )";
       connection.query( query,[ request.userInfo.mobileNo, request.userInfo.password],function(err,rows){
-          log.logDBMysql( " Relesing Database Connection ", rows);
+          log.logDBMysql( " Releasing Database Connection ", rows);
           connection.release();
           if(!err) {
             log.logDBMysql( " sucessfully fetched rows validateUserLogin() : ", rows);
@@ -84,9 +79,9 @@ return new Promise( (resolve, reject) => {
         reject ( "0100" );
       }
       log.logDBMysql('connected as id ' + connection.threadId );
-      var query = "INSERT INTO lend_database.lend_user_info ( mobileNo, emailId, password, regTime, deviceId, deviceToken, deviceType, firstLogin, deviceModel ) VALUES ( TRIM( ? ), TRIM( ?), TRIM( ? ),TRIM( ?), TRIM( ? ), TRIM( ?), TRIM( ? ), TRIM( ? ), TRIM( ?))";
-      connection.query( query,[request.userInfo.mobileNo,request.userInfo.emailId,request.userInfo.password, now, request.deviceInfo.deviceId, request.deviceInfo.deviceToken, request.deviceInfo.deviceType, "001", request.deviceInfo.deviceModel],function(err,rows){
-          log.logDBMysql( " Relesing Database Connection ", rows);
+      var query = "INSERT INTO  " + dbName + ".lend_user_info ( mobileNo, emailAddr, password, deviceId, deviceToken, deviceType, firstLogin, deviceModel ) VALUES ( TRIM( ? ), TRIM( ?), TRIM( ? ),TRIM( ?), TRIM( ? ), TRIM( ?), TRIM( ? ), TRIM( ? ))";
+      connection.query( query,[request.userInfo.mobileNo, request.userInfo.emailAddr, request.userInfo.password, request.deviceInfo.deviceId, request.deviceInfo.deviceToken, request.deviceInfo.deviceType, "001", request.deviceInfo.deviceModel],function(err,rows){
+          log.logDBMysql( " Releasing Database Connection ", rows);
           connection.release();
           if(!err) {
               console.log(" sucessfully inserted row : ", rows);
@@ -116,9 +111,9 @@ return new Promise( (resolve, reject) => {
         reject ( "0100" );
       }
       log.logDBMysql('connected as id ' + connection.threadId );
-      var query = "INSERT INTO lend_database.lend_user_location_info (userId, latitude, longitude, lastUpdate) VALUES ( TRIM(?), TRIM(?), TRIM(?), TRIM(?) )";
-      connection.query( query, [ request.userInfo.username, request.locationInfo.latitude, request.locationInfo.longitude, now ],function(err,rows){
-          log.logDBMysql( " Relesing Database Connection ", rows);
+      var query = "INSERT INTO  " + dbName + ".lend_user_location_info (userId, latitude, longitude) VALUES ( TRIM(?), TRIM(?), TRIM(?))";
+      connection.query( query, [ request.userInfo.userId, request.locationInfo.latitude, request.locationInfo.longitude],function(err,rows){
+          log.logDBMysql( " Releasing Database Connection ", rows);
           connection.release();
           if(!err) {
               log.logDBMysql( " sucessfully inserted row : ", rows);
@@ -146,10 +141,10 @@ return new Promise( (resolve, reject) => {
         reject ( "0100" );
       }
       log.logDBMysql('connected as id ' + connection.threadId );
-      log.logDBMysql('UPDATING record for userId ' + request.userInfo.username );
-      var query = 'UPDATE lend_database.lend_user_location_info SET latitude = TRIM(?), longitude = TRIM(?), lastUpdate = TRIM(?)  WHERE userid = TRIM(?)';
-      connection.query( query, [ request.locationInfo.latitude , request.locationInfo.longitude , now ,request.userInfo.username], function(err,rows){
-          log.logDBMysql( " Relesing Database Connection ", rows);
+      log.logDBMysql('UPDATING record for userId ' + request.userInfo.userId );
+      var query = 'UPDATE  ' + dbName + '.lend_user_location_info SET latitude = TRIM(?), longitude = TRIM(?)  WHERE userId = TRIM(?)';
+      connection.query( query, [ request.locationInfo.latitude , request.locationInfo.longitude ,request.userInfo.userId], function(err,rows){
+          log.logDBMysql( " Releasing Database Connection ", rows);
           connection.release();
           if(!err) {
               log.logDBMysql( " sucessfully updated row : ", rows);
@@ -177,9 +172,9 @@ return new Promise( (resolve, reject) => {
         reject ( "0100" );
       }
       log.logDBMysql('connected as id ' + connection.threadId );
-      var query = "INSERT INTO lend_database.lend_user_kyc_info (userId, firstName, lastName, sex, dob, idProof, idProofDesc) VALUES ( TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?) )";
+      var query = "INSERT INTO  " + dbName + ".lend_user_kyc_info (userId, firstName, lastName, sex, dob, idProof, idProofDesc) VALUES ( TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?) )";
       connection.query( query, [ request.userInfo.userId, request.userInfo.firstName, request.userInfo.lastName, request.userInfo.sex, request.userInfo.dob, , request.userInfo.idProof, request.userInfo.idProofDesc ],function(err,rows){
-          log.logDBMysql( " Relesing Database Connection ", rows);
+          log.logDBMysql( " Releasing Database Connection ", rows);
           connection.release();
           if(!err) {
               log.logDBMysql( " sucessfully inserted insertUserKYC() record : " + rows);
@@ -207,10 +202,10 @@ return new Promise( (resolve, reject) => {
         reject ( "0100" );
       }
       log.logDBMysql('connected as id ' + connection.threadId );
-      log.logDBMysql('UPDATING record for userId ' + request.userInfo.username );
-      var query = 'UPDATE lend_database.lend_user_kyc_info SET firstName = TRIM(?), lastName = TRIM(?), middleName = TRIM(?),sex = TRIM(?), dob = TRIM(?), idProof = Trim(?), idProofDesc = Trim(?)  WHERE userId = TRIM(?)';
+      log.logDBMysql('UPDATING record for userId ' + request.userInfo.userId );
+      var query = 'UPDATE  ' + dbName + '.lend_user_kyc_info SET firstName = TRIM(?), lastName = TRIM(?), middleName = TRIM(?),sex = TRIM(?), dob = TRIM(?), idProof = Trim(?), idProofDesc = Trim(?)  WHERE userId = TRIM(?)';
       connection.query( query, [ request.userInfo.firstName , request.userInfo.lastName , request.userInfo.middleName ,request.userInfo.sex, request.userInfo.dob, request.userInfo.idProof, request.userInfo.idProofDesc, request.userInfo.userId], function(err,rows){
-          log.logDBMysql( " Relesing Database Connection ", rows);
+          log.logDBMysql( " Releasing Database Connection ", rows);
           connection.release();
           if(!err) {
               log.logDBMysql( " sucessfully updated updateUserKYC() record : " + rows);
@@ -240,9 +235,9 @@ return new Promise( (resolve, reject) => {
       }
       log.logDBMysql('connected as id ' + connection.threadId );
       log.logDBMysql('UPDATING record for userId ' + JSON.stringify(request) );
-      var query = 'UPDATE lend_database.lend_user_info SET lastLogin = TRIM(?) WHERE userId = TRIM(?)';
+      var query = 'UPDATE  ' + dbName + '.lend_user_info SET lastLogin = TRIM(?) WHERE userId = TRIM(?)';
       connection.query( query, [ now ,request[0].userId], function(err,rows){
-          log.logDBMysql( " Relesing Database Connection ", rows);
+          log.logDBMysql( " Releasing Database Connection ", rows);
           connection.release();
           if(!err) {
               log.logDBMysql( " sucessfully updated LastLogin() : " + rows);
@@ -271,9 +266,9 @@ return new Promise( (resolve, reject) => {
       }
       log.logDBMysql('connected as id ' + connection.threadId );
       log.logDBMysql('UPDATING record for userId ' + JSON.stringify(request) );
-      var query = 'UPDATE lend_database.lend_user_info SET deviceId = TRIM(?), deviceType = TRIM(?), deviceToken = TRIM(?), deviceModel = TRIM( ? ) WHERE userId = TRIM(?)';
+      var query = 'UPDATE  ' + dbName + '.lend_user_info SET deviceId = TRIM(?), deviceType = TRIM(?), deviceToken = TRIM(?), deviceModel = TRIM( ? ) WHERE userId = TRIM(?)';
       connection.query( query, [ request.deviceInfo.deviceId, request.deviceInfo.deviceType, request.deviceInfo.deviceToken, request.deviceInfo.deviceModel , loginUser[0].userId], function(err,rows){
-          log.logDBMysql( " Relesing Database Connection ", rows);
+          log.logDBMysql( " Releasing Database Connection ", rows);
           connection.release();
           if(!err) {
               log.logDBMysql( " sucessfully updated LastLogin() : " + rows);
@@ -303,9 +298,9 @@ return new Promise( (resolve, reject) => {
       }
       log.logDBMysql('connected as id ' + connection.threadId );
       log.logDBMysql('UPDATING record for userId ' + JSON.stringify(request) );
-      var query = 'UPDATE lend_database.lend_user_info SET deviceId = TRIM(?), deviceType = TRIM(?), deviceToken = TRIM(?), deviceModel = TRIM( ? ) WHERE userId = TRIM(?)';
+      var query = 'UPDATE  ' + dbName + '.lend_user_info SET deviceId = TRIM(?), deviceType = TRIM(?), deviceToken = TRIM(?), deviceModel = TRIM( ? ) WHERE userId = TRIM(?)';
       connection.query( query, [ request.deviceInfo.deviceId, request.deviceInfo.deviceType, request.deviceInfo.deviceToken, request.deviceInfo.deviceModel , request.userInfo.userId], function(err,rows){
-          log.logDBMysql( " Relesing Database Connection ", rows);
+          log.logDBMysql( " Releasing Database Connection ", rows);
           connection.release();
           if(!err) {
               log.logDBMysql( " sucessfully updated updateDeviceInfo2() : " + rows);
@@ -333,9 +328,9 @@ return new Promise( (resolve, reject) => {
         reject ( "0100" );
       }
       log.logDBMysql('connected as id ' + connection.threadId );
-      var query = "INSERT INTO lend_database.lend_borrow_request_info ( image, category, brand, bidRange, type, period, note, borrowDesc, bidCurrency, borrowUserId, borrowLoggedTime, status ) VALUES ( TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?) )";
-      connection.query( query, [ request.borrowInfo.image, request.borrowInfo.category, request.borrowInfo.brand, request.borrowInfo.bidRange, request.borrowInfo.type,  request.borrowInfo.period,  request.borrowInfo.note,  request.borrowInfo.borrowDesc, request.borrowInfo.bidCurrency, request.userInfo.userId, now, "001"],function(err,rows){
-          log.logDBMysql( " Relesing Database Connection ", rows);
+      var query = "INSERT INTO lend_database.lend_borrow_request_info ( image, category, brand, bidRange, type, period, note, borrowDesc, bidCurrency, borrowUserId, status ) VALUES ( TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?) )";
+      connection.query( query, [ request.borrowInfo.image, request.borrowInfo.category, request.borrowInfo.brand, request.borrowInfo.bidRange, request.borrowInfo.type,  request.borrowInfo.period,  request.borrowInfo.note,  request.borrowInfo.borrowDesc, request.borrowInfo.bidCurrency, request.userInfo.userId, "001"],function(err,rows){
+          log.logDBMysql( " Releasing Database Connection ", rows);
           connection.release();
           if(!err) {
               log.logDBMysql( " sucessfully inserted insertBorrowRequest() record : " + rows);
