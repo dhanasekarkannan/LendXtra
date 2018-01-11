@@ -130,9 +130,9 @@ module.exports.updateUserKycInfo = ( request  ) => {
 module.exports.updateUserLocation = ( request  ) => {
   return new Promise( (resolve, reject ) => {
     log.logAuth('Receiving request from server : ' + JSON.stringify(request) );
-    log.logAuth(`updateUserLocation ( ${request.userInfo.username} ) on lend_user_location_info table ` );
+    log.logAuth(`updateUserLocation ( ${request.userInfo.userId} ) on lend_user_location_info table ` );
     db.updateUserLocation( request ).then(( rows ) => {
-      log.logAuth(`updateUserLocation() success for username - (${request.userInfo.username}) ` );
+      log.logAuth(`updateUserLocation() success for username - (${request.userInfo.userId}) ` );
       log.logAuth(`${rows.affectedRows} - for good response `);
       var numRows = rows.affectedRows;
       if( numRows !== 0 ){
@@ -142,14 +142,14 @@ module.exports.updateUserLocation = ( request  ) => {
         return db.insertUserLocationInfo( request );
       }
     }, ( error ) => {
-      log.logAuth(`updateUserLocation() failed for username - (${request.userInfo.username}) ` )
+      log.logAuth(`updateUserLocation() failed for username - (${request.userInfo.userId}) ` )
       reject( generateBadResponse( error ));
     }).then( ( rows )  => {
-      log.logAuth(`insertUserLocationInfo() success for username - (${request.userInfo.username}) ` );
+      log.logAuth(`insertUserLocationInfo() success for username - (${request.userInfo.userId}) ` );
       log.logAuth(`${rows} - for good response `);
       resolve( generateGoodResponse( rows ) );
     },( error ) => {
-      log.logAuth(`insertUserLocationInfo() failed for username - (${request.userInfo.username}) ` )
+      log.logAuth(`insertUserLocationInfo() failed for username - (${request.userInfo.userId}) ` )
       reject( generateBadResponse( error ));
     } );
   });
@@ -158,24 +158,46 @@ module.exports.updateUserLocation = ( request  ) => {
 module.exports.borrowRequest = ( request  ) => {
   return new Promise( (resolve, reject ) => {
     log.logAuth('Receiving request from server : ' + JSON.stringify(request) );
-    log.logAuth(`userRegistration ( ${request.borrowInfo.userId} ) on lend_user_info table ` );
     db.insertBorrowRequest( request ).then(( rows ) => {
-      log.logAuth(`validateUser() success for mobileNo - (${request.userInfo.userId}) ` );
-      if( rows.length === 0 ){
-        return db.insertUserLoginReg( request );
+      log.logAuth(`insertBorrowRequest() success for userId - (${request.userInfo.userId}) `  );
+      console.log("response after successfuly inserted borrower request : " + JSON.stringify(rows) )
+      if( rows.affectedRows !== 0 ){
+        return db.fetchLocationInfo( request );
       }else{
-        reject( generateBadResponse( "0101" ));
+        reject( generateBadResponse( "0111" ));
       }
     }, (err) => {
-      log.logAuth(`userRegistration() failed for mobileNo - (${request.borrowInfo.mobileNo}) ` )
+      log.logAuth(`insertBorrowRequest() failed for userId - (${request.userInfo.userId}) ` )
       log.logAuth( `${err} - for bad response `)
       reject( generateBadResponse( err ));
-    }).then( (result) => {
-      log.logAuth(`insertUserLoginReg() success for mobileNo - (${request.borrowInfo.mobileNo}) ` );
-      log.logAuth(`${result} - for good response `);
-      resolve( generateGoodResponse( result ) );
+    }).then( (rows) => {
+      log.logAuth(`fetchLocationInfo() success for userId - (${request.userInfo.userId}) ` );
+      log.logAuth(`${JSON.stringify(rows)} - for good response `);
+      if( rows.length !== 0 ){
+        return db.fetchNearbyUsers( rows[0] );
+      }else{
+        reject( generateBadResponse( "0113" ));
+      }
     }, (err) => {
-      log.logAuth(`insertUserLoginReg() failed for mobileNo - (${request.borrowInfo.mobileNo}) ` )
+      log.logAuth(`fetchLocationInfo() failed for userId - (${request.userInfo.userId}) ` )
+      log.logAuth( `${err} - for bad response `)
+      reject( generateBadResponse( err ));
+    }).then( (rows) => {
+      console.log(" rows length of distance fetched users :" + rows.length)
+      if( rows.length !== 0){
+        log.logAuth(`fetchNearbyUsers() success for userId - (${request.userInfo.userId}) ` );
+        log.logAuth(`${JSON.stringify(rows)} - for good response `);
+        utils.notificationService( 'ios' );
+        resolve( generateGoodResponse( rows ) );
+
+      }else{
+        log.logAuth(`fetchNearbyUsers() failed for userId - (${request.userInfo.userId}) ` )
+        log.logAuth( `0115 - for bad response `)
+        reject( generateBadResponse( "0115" ) );
+
+      }
+    }, (err) => {
+      log.logAuth(`fetchNearbyUsers() failed for userId - (${request.userInfo.userId}) ` )
       log.logAuth( `${err} - for bad response `)
       reject( generateBadResponse( err ));
     });

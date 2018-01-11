@@ -70,16 +70,16 @@ app.post('/updateUserLocation', ( request, response ) => {
 app.post('/borrowRequest', ( request, response ) => {
   log.logServer( 'Sending request to auth processor =' + JSON.stringify(request.body) );
   auth.updateDeviceInfo(request.body ).then(( resp ) =>{
-  log.logServer( 'Receiving Good response from auth processor =' + JSON.stringify(resp) );
+  log.logServer( 'Receiving Good response from auth processor updateDeviceInfo() =' + JSON.stringify(resp) );
   return auth.borrowRequest(request.body);
   }, (err) => {
-    log.logServer( 'Receiving Bad response from auth processor =' + JSON.stringify(err) );
+    log.logServer( 'Receiving Bad response from auth processor updateDeviceInfo() =' + JSON.stringify(err) );
     response.status("200").send(err);
   }).then(( resp ) =>{
-  log.logServer( 'Receiving Good response from auth processor =' + JSON.stringify(resp) );
+  log.logServer( 'Receiving Good response from auth processor borrowRequest() =' + JSON.stringify(resp) );
   response.status("200").send(resp);
   }, (err) => {
-    log.logServer( 'Receiving Bad response from auth processor =' + JSON.stringify(err) );
+    log.logServer( 'Receiving Bad response from auth processor borrowRequest() =' + JSON.stringify(err) );
     response.status("200").send(err);
   });
 });

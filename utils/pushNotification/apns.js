@@ -1,8 +1,8 @@
 const apn = require("apn");
 
 var  users = [
-  { name: "Wendy", "devices": ["5BA3EF0C434C9FC8532052DD331711233A13C40AA1891385C9D53393E41915F5", "5BA3EF0C434C9FC8532052DD331711233A13C40AA1891385C9D53393E41915F5"]},
-  { name: "John",  "devices": ["5BA3EF0C434C9FC8532052DD331711233A13C40AA1891385C9D53393E41915F5"]},
+  { name: "Wendy", "devices": ["1BF62B62618207185866055184BAE9E0BC5304715C01F597511F4FF0B3C1E4E8", "1BF62B62618207185866055184BAE9E0BC5304715C01F597511F4FF0B3C1E4E8"]},
+  { name: "John",  "devices": ["1BF62B62618207185866055184BAE9E0BC5304715C01F597511F4FF0B3C1E4E8"]},
 ];
 // var  users = [ ];
 var options = {
@@ -25,6 +25,7 @@ module.exports.sendNotification =  () => {
 
     let note = new apn.Notification();
     note.alert = `Hey ${user.name}, I just sent my first Push Notification`;
+    note.sound = "ping.aiff";
 
     note.topic = "com.dhanasekar.Test.lend.LendPush";
 

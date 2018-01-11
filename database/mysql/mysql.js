@@ -117,7 +117,7 @@ return new Promise( (resolve, reject) => {
       }
       log.logDBMysql('connected as id ' + connection.threadId );
       var query = "INSERT INTO lend_database.lend_user_location_info (userId, latitude, longitude, lastUpdate) VALUES ( TRIM(?), TRIM(?), TRIM(?), TRIM(?) )";
-      connection.query( query, [ request.userInfo.username, request.locationInfo.latitude, request.locationInfo.longitude, now ],function(err,rows){
+      connection.query( query, [ request.userInfo.userId, request.locationInfo.latitude, request.locationInfo.longitude, now ],function(err,rows){
           log.logDBMysql( " Relesing Database Connection ", rows);
           connection.release();
           if(!err) {
@@ -146,9 +146,9 @@ return new Promise( (resolve, reject) => {
         reject ( "0100" );
       }
       log.logDBMysql('connected as id ' + connection.threadId );
-      log.logDBMysql('UPDATING record for userId ' + request.userInfo.username );
+      log.logDBMysql('UPDATING record for userId ' + request.userInfo.userId );
       var query = 'UPDATE lend_database.lend_user_location_info SET latitude = TRIM(?), longitude = TRIM(?), lastUpdate = TRIM(?)  WHERE userid = TRIM(?)';
-      connection.query( query, [ request.locationInfo.latitude , request.locationInfo.longitude , now ,request.userInfo.username], function(err,rows){
+      connection.query( query, [ request.locationInfo.latitude , request.locationInfo.longitude , now ,request.userInfo.userId], function(err,rows){
           log.logDBMysql( " Relesing Database Connection ", rows);
           connection.release();
           if(!err) {
@@ -352,4 +352,103 @@ return new Promise( (resolve, reject) => {
       });
 });
 });
+}
+module.exports.fetchUserInfo = ( request ) => {
+return new Promise( (resolve, reject) => {
+  log.logDBMysql("fetchUserInfo called successfully");
+  pool.getConnection(function(err,connection){
+      if (err) {
+        log.logDBMysql( "Error in connection database");
+        reject ( "0100" );
+      }
+      log.logDBMysql('connected as id ' + connection.threadId );
+      var query = "SELECT * FROM lend_database.lend_user_info WHERE userId = TRIM( ? )";
+      connection.query( query,[ request.userInfo.userId ],function(err,rows){
+          log.logDBMysql( " Relesing Database Connection " + rows);
+          connection.release();
+          if(!err) {
+            log.logDBMysql( " sucessfully fetched rows fetchUserInfo() : " + rows);
+            resolve( rows );
+
+          }else{
+            log.logDBMysql( `failed to fetch rows for fetchUserInfo() :  ${err.message}`);
+            reject( "0112" );
+          }
+      });
+
+      connection.on('error', function(err) {
+        log.logDBMysql( "Error in connection database");
+        reject ( "0100" );
+      });
+});
+});
+
+}
+
+module.exports.fetchLocationInfo = ( request ) => {
+return new Promise( (resolve, reject) => {
+  log.logDBMysql("fetchLocationInfo called successfully");
+  pool.getConnection(function(err,connection){
+      if (err) {
+        log.logDBMysql( "Error in connection database");
+        reject ( "0100" );
+      }
+      log.logDBMysql('connected as id ' + connection.threadId );
+      var query = "SELECT * FROM lend_database.lend_user_location_info WHERE userId = TRIM( ? )";
+      connection.query( query,[ request.userInfo.userId ],function(err,rows){
+          log.logDBMysql( " Relesing Database Connection " + rows);
+          connection.release();
+          if(!err) {
+            log.logDBMysql( " sucessfully fetched rows fetchLocationInfo() : " + JSON.stringify(rows));
+            resolve( rows );
+
+          }else{
+            log.logDBMysql( `failed to fetch rows for fetchLocationInfo() :  ${err.message}`);
+            reject( "0113" );
+          }
+      });
+
+      connection.on('error', function(err) {
+        log.logDBMysql( "Error in connection database");
+        reject ( "0100" );
+      });
+});
+});
+
+}
+module.exports.fetchNearbyUsers = ( request ) => {
+return new Promise( (resolve, reject) => {
+  log.logDBMysql("fetchNearbyUsers called successfully");
+  pool.getConnection(function(err,connection){
+      if (err) {
+        log.logDBMysql( "Error in connection database");
+        reject ( "0100" );
+      }
+      log.logDBMysql('connected as id ' + connection.threadId );
+      log.logDBMysql( ` request passing db : ${JSON.stringify(request)}`   );
+      console.log( ` request passing db : ${JSON.stringify(request)}`   );
+      console.log( request);
+
+      var query = "SELECT * ,(((acos(sin((TRIM( ? )*pi()/180)) * sin((latitude*pi()/180))+cos(((TRIM(?))*pi()/180)) * cos(( latitude*pi()/180)) * cos(((TRIM( ? )- longitude)*pi()/180))))*180/pi())*60*1.1515*1.609344) as distance FROM lend_database.lend_user_location_info HAVING distance <= TRIM(?)";
+      connection.query( query,[ request.latitude, request.latitude,request.longitude, request.radius ],function(err,rows){
+
+          log.logDBMysql( " Relesing Database Connection " + rows);
+          connection.release();
+          if(!err) {
+            log.logDBMysql( " sucessfully fetched rows fetchNearbyUsers() : " + JSON.stringify(rows));
+            resolve( rows );
+
+          }else{
+            log.logDBMysql( `failed to fetch rows for fetchNearbyUsers() :  ${err.message}`);
+            reject( "0114" );
+          }
+      });
+
+      connection.on('error', function(err) {
+        log.logDBMysql( "Error in connection database");
+        reject ( "0100" );
+      });
+});
+});
+
 }
