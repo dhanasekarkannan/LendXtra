@@ -3,3 +3,4 @@ logs/
 processor/
 database/mysql/connection.js
 database.json
+package-lock.json

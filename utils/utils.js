@@ -40,10 +40,10 @@ var validateAppVersion = ( osTitle , version ) => {
   }
 }
 
-var notificationService = ( device) => {
-  if( device === 'ios'){
-    apn.sendNotification();
-  }else if( device === 'android'){
+var notificationService = (  userInfo, request ) => {
+  if( userInfo.deviceType === 'ios' ){
+    apn.sendNotification( userInfo, request );
+  }else if( userInfo.deviceType === 'android'){
 
   }else{
 

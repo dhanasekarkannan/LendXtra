@@ -17,8 +17,8 @@ return new Promise( (resolve, reject) => {
         reject ( "0100" );
       }
       log.logDBMysql('connected as id ' + connection.threadId );
-      var query = 'SELECT * FROM  ' + dbName + '.lend_user_info WHERE mobileNo = TRIM( ? ) OR emailAddr = TRIM( ?) OR mobileToken = TRIM( ?) OR mobileId = TRIM( ?)';
-      connection.query( query,[ request.userInfo.mobileNo, request.userInfo.emailAddr, request.userInfo.mobileToken, request.userInfo.mobileId],function(err,rows){
+      var query = 'SELECT * FROM  ' + dbName + '.lend_user_info WHERE mobileNo = TRIM( ? ) OR emailAddr = TRIM( ?) OR deviceToken = TRIM( ?) OR deviceId = TRIM( ?)';
+      connection.query( query,[ request.userInfo.mobileNo, request.userInfo.emailAddr, request.deviceInfo.deviceToken, request.deviceInfo.deviceId],function(err,rows){
           log.logDBMysql( " Releasing Database Connection ", rows);
           connection.release();
           if(!err) {
@@ -173,7 +173,7 @@ return new Promise( (resolve, reject) => {
       }
       log.logDBMysql('connected as id ' + connection.threadId );
       var query = "INSERT INTO  " + dbName + ".lend_user_kyc_info (userId, firstName, lastName, sex, dob, idProof, idProofDesc) VALUES ( TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?) )";
-      connection.query( query, [ request.userInfo.userId, request.userInfo.firstName, request.userInfo.lastName, request.userInfo.sex, request.userInfo.dob, , request.userInfo.idProof, request.userInfo.idProofDesc ],function(err,rows){
+      connection.query( query, [ request.userInfo.userId, request.userInfo.firstName, request.userInfo.lastName, request.userInfo.sex, request.userInfo.dob, request.userInfo.idProof, request.userInfo.idProofDesc ],function(err,rows){
           log.logDBMysql( " Releasing Database Connection ", rows);
           connection.release();
           if(!err) {
@@ -328,8 +328,8 @@ return new Promise( (resolve, reject) => {
         reject ( "0100" );
       }
       log.logDBMysql('connected as id ' + connection.threadId );
-      var query = "INSERT INTO lend_database.lend_borrow_request_info ( image, category, brand, bidRange, type, period, note, borrowDesc, bidCurrency, borrowUserId, status ) VALUES ( TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?) )";
-      connection.query( query, [ request.borrowInfo.image, request.borrowInfo.category, request.borrowInfo.brand, request.borrowInfo.bidRange, request.borrowInfo.type,  request.borrowInfo.period,  request.borrowInfo.note,  request.borrowInfo.borrowDesc, request.borrowInfo.bidCurrency, request.userInfo.userId, "001"],function(err,rows){
+      var query = "INSERT INTO lend_database.lend_borrow_request_info ( image, category, brand, bidRange, type, period, note, borrowDesc, bidCurrency, borrowUserId, status, borrowLat, borrowLong ) VALUES ( TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?) )";
+      connection.query( query, [ request.borrowInfo.image, request.borrowInfo.category, request.borrowInfo.brand, request.borrowInfo.bidRange, request.borrowInfo.type,  request.borrowInfo.period,  request.borrowInfo.note,  request.borrowInfo.borrowDesc, request.borrowInfo.bidCurrency, request.userInfo.userId, "001", request.locationInfo.latitude, request.locationInfo.longitude ],function(err,rows){
           log.logDBMysql( " Releasing Database Connection ", rows);
           connection.release();
           if(!err) {
@@ -358,7 +358,7 @@ return new Promise( (resolve, reject) => {
       }
       log.logDBMysql('connected as id ' + connection.threadId );
       var query = "SELECT * FROM lend_database.lend_user_info WHERE userId = TRIM( ? )";
-      connection.query( query,[ request.userInfo.userId ],function(err,rows){
+      connection.query( query,[ request.userId ],function(err,rows){
           log.logDBMysql( " Relesing Database Connection " + rows);
           connection.release();
           if(!err) {

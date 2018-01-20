@@ -15,57 +15,73 @@ exports.setup = function(options, seedLink) {
 };
 
 exports.up = function(db) {
-  db.createTable('lend_user_info', {
+  db.createTable('lend_borrow_request_info', {
     columns: {
-      userId: {
+      biddingId: {
           type: 'int',
           unique: true,
           autoIncrement: true,
           notNull: true
       },
-      emailAddr: {
-          type: 'string',
-          unique: true,
+      requestId: {
+          type: 'int',
+          unique: false,
+          autoIncrement: false,
           notNull: true
       },
-      mobileNo: {
-          type: 'string',
-          unique: true,
+      userId: {
+          type: 'int',
+          unique: false,
+          autoIncrement: false,
           notNull: true
       },
-      password: {
+      image: {
           type: 'string',
-          notNull: true
+          notNull: false
       },
-      deviceToken: {
+      bidPrice: {
           type: 'string',
-          unique: true,
-          notNull: true
+          notNull: false
       },
-      deviceId: {
+      bidCurrency: {
           type: 'string',
-          unique: true,
-          notNull: true
+          notNull: false
       },
-      deviceModel: {
-          type: 'string',
-          notNull: true
-      },
-      deviceType: {
+      type: {
           type: 'string',
           notNull: true
       },
-      firstLogin: {
-          type: 'boolean',
-          defaultValue: '0'
+      period: {
+          type: 'string',
+          notNull: false
       },
-      lastLogin: {
+      deposit: {
+          type: 'string',
+          notNull: true
+      },
+      requiredDoc: {
+          type: 'string',
+          notNull: false
+      },
+      note: {
+          type: 'string',
+          notNull: false
+      },
+      bidLat: {
+          type: 'string',
+          notNull: true
+      },
+      bidLong: {
+          type: 'string',
+          notNull: true
+      },
+      bidApprovedTime: {
           type: 'timestamp',
           notNull: false
       },
       status: {
         type: 'string',
-        defaultValue: '001'
+        defaultValue: 'ACTIVE'
       },
       createdAt: {
           type: 'timestamp',
@@ -82,9 +98,6 @@ exports.up = function(db) {
 };
 
 exports.down = function(db) {
-  db.dropTable('lend_user_info', {
-      ifExists: true
-  });
   return null;
 };
 

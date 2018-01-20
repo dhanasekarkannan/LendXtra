@@ -18,8 +18,9 @@ exports.up = function(db) {
   db.createTable('lend_borrow_request_info', {
     columns: {
       borrowId: {
-          type: 'string',
+          type: 'int',
           unique: true,
+          autoIncrement: true,
           notNull: true
       },
       image: {

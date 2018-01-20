@@ -18,13 +18,14 @@ exports.up = function(db) {
     db.createTable('lend_user_info_table', {
         columns: {
             id: {
-                type: 'int', 
-                primaryKey: true, 
+                type: 'int',
+                primaryKey: true,
                 autoIncrement: true
             },
             email: {
                 type: 'string',
-                unique: true
+                unique: true,
+                notNull: true
             },
             mobile_no: {
                 type: 'string',
@@ -46,7 +47,7 @@ exports.up = function(db) {
                 notNull: true
             },
             slug: {
-                type: 'string', 
+                type: 'string',
                 unique: true,
                 notNull: true
             },

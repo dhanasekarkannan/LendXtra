@@ -1,10 +1,5 @@
 const apn = require("apn");
 
-var  users = [
-  { name: "Wendy", "devices": ["1BF62B62618207185866055184BAE9E0BC5304715C01F597511F4FF0B3C1E4E8", "1BF62B62618207185866055184BAE9E0BC5304715C01F597511F4FF0B3C1E4E8"]},
-  { name: "John",  "devices": ["1BF62B62618207185866055184BAE9E0BC5304715C01F597511F4FF0B3C1E4E8"]},
-];
-// var  users = [ ];
 var options = {
   token: {
     key: "./config/certificates/AuthKey_9AEKQ833VE.p8",
@@ -16,27 +11,23 @@ var options = {
 
 var apnProvider = new apn.Provider(options);
 
-// let service = new apn.Provider({
-//   cert: "./config/certificates/cert.pem",
-//   key: "./config/certificates/AuthKey_9AEKQ833VE.pem",
-// });
-module.exports.sendNotification =  () => {
-  users.forEach( (user) => {
+module.exports.sendNotification =  ( userInfo, request  ) => {
+
 
     let note = new apn.Notification();
-    note.alert = `Hey ${user.name}, I just sent my first Push Notification`;
+    note.alert = `Hey ${userInfo.userId}, your near by user need a product under ${ request.borrowInfo.category }`;
     note.sound = "ping.aiff";
 
     note.topic = "com.dhanasekar.Test.lend.LendPush";
 
-    console.log(`Sending: ${note.compile()} to ${user.devices}`);
+    console.log(`Sending: ${note.compile()} to ${userInfo.deviceToken}`);
 
-    apnProvider.send(note, user.devices).then( result => {
+    apnProvider.send(note, userInfo.deviceToken).then( result => {
         console.log("sent:", result.sent.length);
         console.log("failed:", result.failed.length);
         console.log(result.failed);
     });
-  });
+
 
   apnProvider.shutdown();
 }

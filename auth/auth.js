@@ -3,7 +3,6 @@ const utils = require('../utils/utils.js');
 const db = require('../database/mysql/mysql.js');
 const log = require('../utils/log.js');
 
-var loginUser = [];
 
 module.exports.vaidateAppVersion = ( request ) =>{
   log.logAuth('Receiving request from server : ' + JSON.stringify(request) );
@@ -20,6 +19,8 @@ module.exports.vaidateAppVersion = ( request ) =>{
 }
 
 module.exports.userLogin = ( request  ) => {
+  var loginUser = [];
+
   return new Promise( (resolve, reject ) => {
     log.logAuth('Receiving request from server : ' + JSON.stringify(request) );
     log.logAuth(`validateUser ( ${request.userInfo.mobileNo} ) on lend_user_info table ` );
@@ -52,7 +53,7 @@ module.exports.userLogin = ( request  ) => {
       reject( generateBadResponse( err ));
     }).then( ( rows )  => {
       log.logAuth(`updateDeviceInfo() success for MobileNo - (${request.userInfo.mobileNo})  )` )
-        resolve( generateGoodResponse( rows ));
+        resolve( generateGoodResponse( loginUser ));
     }, (err) => {
       log.logAuth(`updateDeviceInfo() failed for MobileNo - (${request.userInfo.mobileNo}) & error (${err} )` )
       reject( generateBadResponse( err ));
@@ -72,16 +73,16 @@ module.exports.userRegistration = ( request  ) => {
         reject( generateBadResponse( "0101" ));
       }
     }, (err) => {
-      log.logAuth(`userRegistration() failed for mobileNo - (${request.userInfo.mobileNo}) ` )
-      log.logAuth( `${err} - for bad response `)
+      log.logAuth(`userRegistration() failed for mobileNo - (${request.userInfo.mobileNo}) ` );
+      log.logAuth( `${err} - for bad response `);
       reject( generateBadResponse( err ));
     }).then( (result) => {
       log.logAuth(`insertUserLoginReg() success for mobileNo - (${request.userInfo.mobileNo}) ` );
       log.logAuth(`${result} - for good response `);
-      resolve( generateGoodResponse( result ) );
+      resolve( generateGoodResponse(  '{ "message" : "user registered Successfully" }' ) );
     }, (err) => {
-      log.logAuth(`insertUserLoginReg() failed for mobileNo - (${request.userInfo.mobileNo}) ` )
-      log.logAuth( `${err} - for bad response `)
+      log.logAuth(`insertUserLoginReg() failed for mobileNo - (${request.userInfo.mobileNo}) ` );
+      log.logAuth( `${err} - for bad response `);
       reject( generateBadResponse( err ));
     });
   });
@@ -90,8 +91,8 @@ module.exports.userRegistration = ( request  ) => {
 module.exports.updateDeviceInfo = ( request ) => {
     return new Promise((resolve, reject ) => {
       db.updateDeviceInfo2(request).then( ( rows )  => {
-        log.logAuth(`updateDeviceInfo2() success for MobileNo - (${request.userInfo.userId})  )` )
-          resolve( generateGoodResponse( rows ));
+        log.logAuth(`updateDeviceInfo2() success for MobileNo - (${request.userInfo.userId})  )` );
+        resolve( generateGoodResponse( rows ));
       }, (err) => {
         log.logAuth(`updateDeviceInfo2() failed for MobileNo - (${request.userInfo.userId}) & error (${err} )` )
         reject( generateBadResponse( err ));
@@ -187,7 +188,16 @@ module.exports.borrowRequest = ( request  ) => {
       if( rows.length !== 0){
         log.logAuth(`fetchNearbyUsers() success for userId - (${request.userInfo.userId}) ` );
         log.logAuth(`${JSON.stringify(rows)} - for good response `);
-        utils.notificationService( 'ios' );
+        rows.forEach( (row) => {
+          console.log("fetchUserInfo - ");
+          db.fetchUserInfo( row ).then( ( userInfo ) => {
+            log.logAuth(`fetchUserInfo() success for userId - (${row.userId}) ` );
+             utils.notificationService( userInfo[0], request )
+          } , (err)=>{
+            log.logAuth(`fetchUserInfo() failed for userId - (${row.userId}) ` );
+              reject( generateBadResponse(err ));
+          } );
+        } );
         resolve( generateGoodResponse( rows ) );
 
       }else{
@@ -205,19 +215,37 @@ module.exports.borrowRequest = ( request  ) => {
 }
 
 
+module.exports.lendRequest = ( request ) => {
+  return new Promise( (resolve, reject ) => {
+
+  });
+}
+
 var generateGoodResponse = ( body ) => {
   log.logAuth( 'Generating Good Response ...' );
-  var response  = {
-    responseCode : 0,
-    body : body
+
+  if( typeof (body) === "object"){
+    var response  = {
+      responseCode : 0,
+      body : body
+    }
+    logResponse( 'Sending Good Response to server : '  , response )
+    return response;
+  }else{
+    var response  = {
+      responseCode : 0,
+      body : JSON.parse(body)
+    }
+    logResponse( 'Sending Good Response to server : '  , response )
+    return response;
   }
-  logResponse( 'Sending Good Response to server : '  , response )
-  return response
+
 }
 
 var generateBadResponse = ( errCode ) => {
   log.logAuth( `Generating Bad Response ... : ${errCode}` );
   var errorBody = utils.getErrorDesc( errCode );
+
   var response = {
     responseCode : 1,
     error : errorBody

@@ -5,12 +5,28 @@ const fs = require('fs');
 const port = process.env.PORT || 3000;
 const log = require('./utils/log.js');
 const auth = require('./auth/auth.js');
+const session = require('express-session')
+
 
 app.use(bodyParser.json());
 app.get('/', ( request, response ) => {
-  response.send('You have successfully hitted LEND server ');
+  response.send({ "id" : 1, "user" : "dhanasekar"});
   log.logServer( `${request.method} ${request.url}` );
+  log.logServer(' Response sent ');
 });
+app.use(function(req, res, next) {
+    res.header('Access-Control-Allow-Origin', "*");
+    res.header('Access-Control-Allow-Methods','GET,PUT,POST,DELETE');
+    res.header('Access-Control-Allow-Headers', 'Content-Type');
+    next();
+});
+app.use(session({
+  secret: 'hjsufhk34291jsdffl',
+  resave: false,
+  saveUninitialized: true,
+  cookie: { maxAge: (60000) }
+
+}));
 
 app.post('/appVerisonCheck', ( request, response ) => {
   log.logServer( 'Sending request to auth processor =' + JSON.stringify(request.body) );
@@ -24,6 +40,7 @@ app.post('/userLogin', ( request, response ) => {
   log.logServer( 'Sending request to auth processor =' + JSON.stringify(request.body) );
   auth.userLogin(request.body ).then(( resp ) =>{
   log.logServer( 'Receiving Good response from auth processor =' + JSON.stringify(resp) );
+  request.session.user = request.body;
   response.status("200").send(resp);
   }, (err) => {
     log.logServer( 'Receiving Bad response from auth processor =' + JSON.stringify(err) );
@@ -68,20 +85,57 @@ app.post('/updateUserLocation', ( request, response ) => {
   });
 });
 app.post('/borrowRequest', ( request, response ) => {
-  log.logServer( 'Sending request to auth processor =' + JSON.stringify(request.body) );
-  auth.updateDeviceInfo(request.body ).then(( resp ) =>{
-  log.logServer( 'Receiving Good response from auth processor updateDeviceInfo() =' + JSON.stringify(resp) );
-  return auth.borrowRequest(request.body);
-  }, (err) => {
-    log.logServer( 'Receiving Bad response from auth processor updateDeviceInfo() =' + JSON.stringify(err) );
-    response.status("200").send(err);
-  }).then(( resp ) =>{
-  log.logServer( 'Receiving Good response from auth processor borrowRequest() =' + JSON.stringify(resp) );
-  response.status("200").send(resp);
-  }, (err) => {
-    log.logServer( 'Receiving Bad response from auth processor borrowRequest() =' + JSON.stringify(err) );
-    response.status("200").send(err);
-  });
+
+  if( request.session.user ){
+
+    log.logServer( 'Sending request to auth processor =' + JSON.stringify(request.body) );
+    auth.updateDeviceInfo(request.body ).then(( resp ) =>{
+    log.logServer( 'Receiving Good response from auth processor updateDeviceInfo() =' + JSON.stringify(resp) );
+    return auth.borrowRequest(request.body);
+    }, (err) => {
+      log.logServer( 'Receiving Bad response from auth processor updateDeviceInfo() =' + JSON.stringify(err) );
+      response.status("200").send(err);
+    }).then(( resp ) =>{
+    log.logServer( 'Receiving Good response from auth processor borrowRequest() =' + JSON.stringify(resp) );
+    response.status("200").send(resp);
+    }, (err) => {
+      log.logServer( 'Receiving Bad response from auth processor borrowRequest() =' + JSON.stringify(err) );
+      response.status("200").send(err);
+    });
+  }else{
+
+    log.logServer( ' session unauthorized ' );
+    response.status("401").send();
+
+  }
+});
+
+app.post('/logout', ( request , response ) => {
+
+  if( request.session.user ){
+
+    // request.session.destroy( function( err ){
+    //   response.status("200").send({
+      //   response : "1",
+      //   body : {
+      //     errorCode : "0117",
+      //     errorDesc : "logout failed"
+      //   }
+      // // });
+    // })
+    response.status("200").send({
+      response : "0",
+      body : {
+        message : "successfully logged out"
+      }
+    })
+
+  }else{
+    log.logServer( ' session unauthorized ' );
+    response.status("401").send();
+
+  }
+
 });
 
 app.listen(port, () => {
