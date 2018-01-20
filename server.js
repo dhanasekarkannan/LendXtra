@@ -110,6 +110,33 @@ app.post('/borrowRequest', ( request, response ) => {
   }
 });
 
+
+app.post('/bidRequest', ( request, response ) => {
+
+  if( request.session.user ){
+
+    log.logServer( 'Sending request to auth processor =' + JSON.stringify(request.body) );
+    auth.updateDeviceInfo(request.body ).then(( resp ) =>{
+    log.logServer( 'Receiving Good response from auth processor updateDeviceInfo() =' + JSON.stringify(resp) );
+    return auth.bidRequest(request.body);
+    }, (err) => {
+      log.logServer( 'Receiving Bad response from auth processor updateDeviceInfo() =' + JSON.stringify(err) );
+      response.status("200").send(err);
+    }).then(( resp ) =>{
+    log.logServer( 'Receiving Good response from auth processor bidRequest() =' + JSON.stringify(resp) );
+    response.status("200").send(resp);
+    }, (err) => {
+      log.logServer( 'Receiving Bad response from auth processor bidRequest() =' + JSON.stringify(err) );
+      response.status("200").send(err);
+    });
+  }else{
+
+    log.logServer( ' session unauthorized ' );
+    response.status("401").send();
+
+  }
+});
+
 app.post('/logout', ( request , response ) => {
 
   if( request.session.user ){

@@ -101,7 +101,37 @@ return new Promise( (resolve, reject) => {
 });
 });
 }
+module.exports.insertBidRequest = ( request ) => {
+return new Promise( (resolve, reject) => {
+  log.logDBMysql(" insertBidRequest() called successfully");
+  pool.getConnection(function(err,connection){
+      if (err) {
+        log.logDBMysql( "Error in connection database");
+        reject ( "0100" );
+      }
+      log.logDBMysql('connected as id ' + connection.threadId );
+      var query = "INSERT INTO  " + dbName + ".lend_bid_request_info ( requestId, userId, image, bidPrice, bidCurrency, type, period, deposit, requiredDoc, note, bidLat, bidLong, status ) VALUES ( TRIM( ? ), TRIM( ?), TRIM( ? ),TRIM( ?), TRIM( ? ), TRIM( ?), TRIM( ? ), TRIM( ? ), TRIM( ?), TRIM( ? ),TRIM( ?), TRIM( ? ), TRIM( ?))";
+      connection.query( query,[request.bidInfo.requestId, request.userInfo.userId, request.bidInfo.image, request.bidInfo.bidAmount, request.bidInfo.bidCurrency, request.bidInfo.type, request.bidInfo.period, request.bidInfo.deposit, request.bidInfo.requiredDoc, request.bidInfo.note, request.locationInfo.latitude, request.locationInfo.longitude, "001" ],function(err,rows){
+          log.logDBMysql( " Releasing Database Connection ", rows);
+          connection.release();
+          if(!err) {
+              console.log(" sucessfully inserted insertBidRequest() : ", rows);
+              log.logDBMysql( " sucessfully inserted  insertBidRequest() : ", rows);
+              resolve( rows );
+          }else{
+              log.logDBMysql( ` failed to inserted row : ${err}` );
+              reject( "0117" );
 
+          }
+      });
+
+      connection.on('error', function(err) {
+        log.logDBMysql( "Error in connection database");
+        reject ( "0100" );
+      });
+});
+});
+}
 module.exports.insertUserLocationInfo = ( request ) => {
 return new Promise( (resolve, reject) => {
   log.logDBMysql(" Insert User called successfully");

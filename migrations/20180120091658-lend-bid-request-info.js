@@ -15,7 +15,7 @@ exports.setup = function(options, seedLink) {
 };
 
 exports.up = function(db) {
-  db.createTable('lend_borrow_request_info', {
+  db.createTable('lend_bid_request_info', {
     columns: {
       biddingId: {
           type: 'int',
@@ -98,6 +98,10 @@ exports.up = function(db) {
 };
 
 exports.down = function(db) {
+  db.dropTable('lend_bid_request_info', {
+      ifExists: true
+  });
+
   return null;
 };
 

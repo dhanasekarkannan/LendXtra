@@ -215,9 +215,22 @@ module.exports.borrowRequest = ( request  ) => {
 }
 
 
-module.exports.lendRequest = ( request ) => {
+module.exports.bidRequest = ( request ) => {
   return new Promise( (resolve, reject ) => {
-
+    log.logAuth('Receiving request from server for bidRequest : ' + JSON.stringify(request) );
+    db.insertBidRequest( request ).then(( rows ) => {
+      log.logAuth(`insertBidRequest() success for userId - (${request.userInfo.userId}) `  );
+      console.log("response after successfuly inserted bid request : " + JSON.stringify(rows) )
+      if( rows.affectedRows !== 0 ){
+        resolve ( generateGoodResponse( '{ "message" : "bid inserted Successfully" }' ));
+      }else{
+        reject( generateBadResponse( "0116" ));
+      }
+    }, (err) => {
+      log.logAuth(`insertBorrowRequest() failed for userId - (${request.userInfo.userId}) ` )
+      log.logAuth( `${err} - for bad response `)
+      reject( generateBadResponse( err ));
+    });
   });
 }
 
