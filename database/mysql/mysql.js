@@ -3,6 +3,7 @@ const log = require('./../../utils/log.js');
 const pool = require('./../../database/mysql/connection.js');
 
 var now =  moment(new Date()).format("YYYY-MM-DD HH:mm:ss");
+var otpEvent = "otpEvent" + moment(new Date()).format("YYYYMMDDTHHmmss");
 
 var dbName = pool.databaseName(function(result) {
     //
@@ -27,6 +28,68 @@ return new Promise( (resolve, reject) => {
           }else{
             log.logDBMysql( `failed fetched rows :  ${err.message}`);
             reject( "0104" );
+          }
+      });
+
+      connection.on('error', function(err) {
+        log.logDBMysql( "Error in connection database");
+        reject ( "0100" );
+      });
+});
+});
+
+}
+
+module.exports.validateUserTemp = ( request ) => {
+return new Promise( (resolve, reject) => {
+  log.logDBMysql(" validateUserTemp() called successfully");
+  pool.getConnection(function(err,connection){
+      if (err) {
+        log.logDBMysql( "Error in connection database");
+        reject ( "0100" );
+      }
+      log.logDBMysql('connected as id ' + connection.threadId );
+      var query = 'SELECT * FROM  ' + dbName + '.lend_user_info_temp WHERE mobileNo = TRIM( ? ) OR emailAddr = TRIM( ?) OR deviceToken = TRIM( ?) OR deviceId = TRIM( ?)';
+      connection.query( query,[ request.userInfo.mobileNo, request.userInfo.emailAddr, request.deviceInfo.deviceToken, request.deviceInfo.deviceId],function(err,rows){
+          log.logDBMysql( " Releasing Database Connection ", rows);
+          connection.release();
+          if(!err) {
+              log.logDBMysql( "  validateUserTemp success : ", rows);
+              resolve( rows );
+          }else{
+            log.logDBMysql( ` validateUserTemp failed :  ${err.message}`);
+            reject( "0104" );
+          }
+      });
+
+      connection.on('error', function(err) {
+        log.logDBMysql( "Error in connection database");
+        reject ( "0100" );
+      });
+});
+});
+
+}
+module.exports.validateOtp = ( request ) => {
+return new Promise( (resolve, reject) => {
+  log.logDBMysql("validateOtp() called successfully");
+  pool.getConnection(function(err,connection){
+      if (err) {
+        log.logDBMysql( "Error in connection database");
+        reject ( "0100" );
+      }
+      log.logDBMysql('connected as id ' + connection.threadId );
+      var query = "SELECT * FROM  " + dbName + ".lend_otp_info WHERE otpId = TRIM( ? ) AND otpValue = TRIM( ? )";
+      connection.query( query,[ request.userInfo.otpId, request.userInfo.otpValue],function(err,rows){
+          log.logDBMysql( " Releasing Database Connection ", rows);
+          connection.release();
+          if(!err) {
+            log.logDBMysql( " sucessfully fetched rows validateOtp() : ", rows);
+            resolve( rows );
+
+          }else{
+            log.logDBMysql( `failed to fetch rows for validateOtp() :  ${err.message}`);
+            reject( "0122" );
           }
       });
 
@@ -79,17 +142,96 @@ return new Promise( (resolve, reject) => {
         reject ( "0100" );
       }
       log.logDBMysql('connected as id ' + connection.threadId );
-      var query = "INSERT INTO  " + dbName + ".lend_user_info ( mobileNo, emailAddr, password, deviceId, deviceToken, deviceType, firstLogin, deviceModel ) VALUES ( TRIM( ? ), TRIM( ?), TRIM( ? ),TRIM( ?), TRIM( ? ), TRIM( ?), TRIM( ? ), TRIM( ? ))";
-      connection.query( query,[request.userInfo.mobileNo, request.userInfo.emailAddr, request.userInfo.password, request.deviceInfo.deviceId, request.deviceInfo.deviceToken, request.deviceInfo.deviceType, "001", request.deviceInfo.deviceModel],function(err,rows){
+
+      var query = "INSERT INTO  " + dbName + ".lend_user_info ( userId, mobileNo, emailAddr, password, deviceId, deviceToken, deviceType, regType, firstLogin, deviceModel )  SELECT   userId, mobileNo, emailAddr, password, deviceId, deviceToken, deviceType, regType, firstLogin, deviceModel  FROM " + dbName + ".lend_user_info_temp WHERE userId = TRIM( ? )";
+      connection.query( query,[ request.userInfo.userId],function(err,rows){
           log.logDBMysql( " Releasing Database Connection ", rows);
           connection.release();
           if(!err) {
-              console.log(" sucessfully inserted row : ", rows);
-              log.logDBMysql( " sucessfully inserted row : ", rows);
+              log.logDBMysql( " sucessfully inserted record  into lend_user_info: ", rows);
               resolve( rows );
           }else{
-              log.logDBMysql( ` failed to inserted row : ${err}` );
+              log.logDBMysql( ` failed to inserted record into lend_user_info : ${err}` );
               reject( "0105" );
+
+          }
+      });
+
+      connection.on('error', function(err) {
+        log.logDBMysql( "Error in connection database");
+        reject ( "0100" );
+      });
+});
+});
+}
+
+
+module.exports.genOTP = ( userId, otpValue ) => {
+return new Promise( (resolve, reject) => {
+  log.logDBMysql(" insertOTP called successfully");
+  pool.getConnection(function(err,connection){
+      if (err) {
+        log.logDBMysql( "Error in connection database");
+        reject ( "0100" );
+      }
+      log.logDBMysql('connected as id ' + connection.threadId );
+
+      var query = "INSERT INTO  " + dbName + ".lend_otp_info ( userId, otpValue ) VALUES ( TRIM( ? ), TRIM( ?))";
+      connection.query( query,[userId, otpValue],function(err,otpInfo){
+          if(!err) {
+              log.logDBMysql( " insertOTP() successfuly inserted record : " +  otpInfo);
+
+                    var query = `DROP EVENT IF EXISTS ${otpEvent};` + ` CREATE EVENT IF NOT EXISTS ${otpEvent}` + ` ON SCHEDULE AT CURRENT_TIMESTAMP + INTERVAL 1 MINUTE` + ` DO DELETE FROM ` + dbName +`.lend_otp_info WHERE  otpId = ${otpInfo.insertId};`;
+
+                    connection.query( query,function(err,rows){
+                        log.logDBMysql( " Releasing Database Connection " + rows);
+                        connection.release();
+                        if(!err) {
+                            log.logDBMysql( " successfuly created event for OTPID : " + otpInfo.insertId);
+
+                            rows.push( otpInfo );
+                            resolve( rows );
+                        }else{
+                            log.logDBMysql( `failed to create event for OTPID: : ${err}` );
+                            reject( "0121" );
+
+                        }});
+
+          }else{
+              log.logDBMysql( `insertOTP() failed to insert record : ${err}` );
+              reject( "0120" );
+
+          }
+      });
+
+      connection.on('error', function(err) {
+        log.logDBMysql( "Error in connection database");
+        reject ( "0100" );
+      });
+});
+});
+}
+
+
+module.exports.insertUserLoginTempReg = ( request ) => {
+return new Promise( (resolve, reject) => {
+  log.logDBMysql(" insertUserLoginTempReg User called successfully");
+  pool.getConnection(function(err,connection){
+      if (err) {
+        log.logDBMysql( "Error in connection database");
+        reject ( "0100" );
+      }
+      log.logDBMysql('connected as id ' + connection.threadId );
+      var query = "INSERT INTO  " + dbName + ".lend_user_info_temp ( mobileNo, emailAddr, password, deviceId, deviceToken, deviceType, firstLogin, deviceModel, regType ) VALUES ( TRIM( ? ), TRIM( ?), TRIM( ? ),TRIM( ?), TRIM( ? ), TRIM( ?), TRIM( ? ), TRIM( ? ), TRIM( ? ))";
+      connection.query( query,[request.userInfo.mobileNo, request.userInfo.emailAddr, request.userInfo.password, request.deviceInfo.deviceId, request.deviceInfo.deviceToken, request.deviceInfo.deviceType, "001", request.deviceInfo.deviceModel, request.userInfo.regType],function(err,rows){
+          log.logDBMysql( " Releasing Database Connection ", rows);
+          connection.release();
+          if(!err) {
+              log.logDBMysql( " sucessfully inserted record  for insertUserLoginTempReg() : ", rows);
+              resolve( rows );
+          }else{
+              log.logDBMysql( `failed to insert record insertUserLoginTempReg() : ${err}` );
+              reject( "0119" );
 
           }
       });
@@ -172,8 +314,8 @@ return new Promise( (resolve, reject) => {
       }
       log.logDBMysql('connected as id ' + connection.threadId );
       log.logDBMysql('UPDATING record for userId ' + request.userInfo.userId );
-      var query = 'UPDATE  ' + dbName + '.lend_user_location_info SET latitude = TRIM(?), longitude = TRIM(?)  WHERE userId = TRIM(?)';
-      connection.query( query, [ request.locationInfo.latitude , request.locationInfo.longitude ,request.userInfo.userId], function(err,rows){
+      var query = 'UPDATE  ' + dbName + '.lend_user_location_info SET latitude = TRIM(?), longitude = TRIM(?), updatedAt = TRIM(?)  WHERE userId = TRIM(?)';
+      connection.query( query, [ request.locationInfo.latitude , request.locationInfo.longitude, now ,request.userInfo.userId], function(err,rows){
           log.logDBMysql( " Releasing Database Connection ", rows);
           connection.release();
           if(!err) {
@@ -185,7 +327,7 @@ return new Promise( (resolve, reject) => {
           }
       });
 
-      connection.on('error', function(err) {
+        connection.on('error', function(err) {
         log.logDBMysql( "Error in connection database");
         reject ( "0100" );
       });
@@ -279,8 +421,8 @@ return new Promise( (resolve, reject) => {
       });
 
       connection.on('error', function(err) {
-        log.logDBMysql( "Error in connection database");
-        reject ( "0100" );
+      log.logDBMysql( "Error in connection database");
+      reject ( "0100" );
       });
 });
 });
@@ -358,7 +500,7 @@ return new Promise( (resolve, reject) => {
         reject ( "0100" );
       }
       log.logDBMysql('connected as id ' + connection.threadId );
-      var query = "INSERT INTO lend_database.lend_borrow_request_info ( image, category, brand, bidRange, type, period, note, borrowDesc, bidCurrency, borrowUserId, status, borrowLat, borrowLong ) VALUES ( TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?) )";
+      var query = 'INSERT INTO ' + dbName + '.lend_borrow_request_info ( image, category, brand, bidRange, type, period, note, borrowDesc, bidCurrency, borrowUserId, status, borrowLat, borrowLong ) VALUES ( TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?), TRIM(?) )';
       connection.query( query, [ request.borrowInfo.image, request.borrowInfo.category, request.borrowInfo.brand, request.borrowInfo.bidRange, request.borrowInfo.type,  request.borrowInfo.period,  request.borrowInfo.note,  request.borrowInfo.borrowDesc, request.borrowInfo.bidCurrency, request.userInfo.userId, "001", request.locationInfo.latitude, request.locationInfo.longitude ],function(err,rows){
           log.logDBMysql( " Releasing Database Connection ", rows);
           connection.release();
@@ -387,7 +529,7 @@ return new Promise( (resolve, reject) => {
         reject ( "0100" );
       }
       log.logDBMysql('connected as id ' + connection.threadId );
-      var query = "SELECT * FROM lend_database.lend_user_info WHERE userId = TRIM( ? )";
+      var query = 'SELECT * FROM ' + dbName + '.lend_user_info WHERE userId = TRIM( ? )';
       connection.query( query,[ request.userId ],function(err,rows){
           log.logDBMysql( " Relesing Database Connection " + rows);
           connection.release();
@@ -419,7 +561,7 @@ return new Promise( (resolve, reject) => {
         reject ( "0100" );
       }
       log.logDBMysql('connected as id ' + connection.threadId );
-      var query = "SELECT * FROM lend_database.lend_user_location_info WHERE userId = TRIM( ? )";
+      var query = 'SELECT * FROM ' + dbName + '.lend_user_location_info WHERE userId = TRIM( ? )';
       connection.query( query,[ request.userInfo.userId ],function(err,rows){
           log.logDBMysql( " Relesing Database Connection " + rows);
           connection.release();
@@ -454,7 +596,7 @@ return new Promise( (resolve, reject) => {
       console.log( ` request passing db : ${JSON.stringify(request)}`   );
       console.log( request);
 
-      var query = "SELECT * ,(((acos(sin((TRIM( ? )*pi()/180)) * sin((latitude*pi()/180))+cos(((TRIM(?))*pi()/180)) * cos(( latitude*pi()/180)) * cos(((TRIM( ? )- longitude)*pi()/180))))*180/pi())*60*1.1515*1.609344) as distance FROM lend_database.lend_user_location_info HAVING distance <= TRIM(?)";
+      var query = 'SELECT * ,(((acos(sin((TRIM( ? )*pi()/180)) * sin((latitude*pi()/180))+cos(((TRIM(?))*pi()/180)) * cos(( latitude*pi()/180)) * cos(((TRIM( ? )- longitude)*pi()/180))))*180/pi())*60*1.1515*1.609344) as distance FROM ' + dbName + '.lend_user_location_info HAVING distance <= TRIM(?)';
       connection.query( query,[ request.latitude, request.latitude,request.longitude, request.radius ],function(err,rows){
 
           log.logDBMysql( " Relesing Database Connection " + rows);

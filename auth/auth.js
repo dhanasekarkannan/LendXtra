@@ -3,17 +3,16 @@ const utils = require('../utils/utils.js');
 const db = require('../database/mysql/mysql.js');
 const log = require('../utils/log.js');
 
-
 module.exports.vaidateAppVersion = ( request ) =>{
   log.logAuth('Receiving request from server : ' + JSON.stringify(request) );
   log.logAuth(`Validating AppVersion ( ${request.deviceInfo.OS} ) on config ` );
   var response = utils.validateAppVersion(request.deviceInfo.OS, request.deviceInfo.appVersion);
   if( typeof (response) === "object" ){
-    log.logAuth(`validateAppVersion() success for OS(${request.deviceInfo.OS}) and version (${request.deviceInfo.appVersion})` )
+    log.logAuth(`validateAppVersion() success for OS(${request.deviceInfo.OS}) and version (${request.deviceInfo.appVersion})` );
     return generateGoodResponse( response, `${request.deviceInfo.OS} App found in server` );
   }else{
-    log.logAuth(`validateAppVersion() failed for OS(${request.deviceInfo.OS}) and version (${request.deviceInfo.appVersion})` )
-    log.logAuth( `${response} - for bad response `)
+    log.logAuth(`validateAppVersion() failed for OS(${request.deviceInfo.OS}) and version (${request.deviceInfo.appVersion})` );
+    log.logAuth( `${response} - for bad response `);
     return generateBadResponse( response );
   }
 }
@@ -27,35 +26,38 @@ module.exports.userLogin = ( request  ) => {
     db.validateUser( request ).then(( rows ) => {
       log.logAuth(`validateUser() success for MobileNo - (${request.userInfo.mobileNo}) ` );
       if( rows.length !== 0 ){
-        return db.validateUserLogin( request );
+        return db.validateUserLogin( request )
+        .then( ( rows )  => {
+          log.logAuth(`validateUserLogin() sucess for MobileNo - (${request.userInfo.mobileNo}) & rows ${JSON.stringify(rows)}` )
+          loginUser = rows
+          if( rows.length !== 0 ){
+            return db.updateLoginInfo(loginUser)
+            .then( ( rows )  => {
+              log.logAuth(`updateLoginInfo() success for MobileNo - (${request.userInfo.mobileNo})  )` )
+              return db.updateDeviceInfo( request, loginUser )
+              .then( ( rows )  => {
+                log.logAuth(`updateDeviceInfo() success for MobileNo - (${request.userInfo.mobileNo})  )` )
+                  resolve( generateGoodResponse( loginUser ));
+              }, (err) => {
+                log.logAuth(`updateDeviceInfo() failed for MobileNo - (${request.userInfo.mobileNo}) & error (${err} )` )
+                reject( generateBadResponse( err ));
+              });
+            }, (err) => {
+              log.logAuth(`UpdateLastLogin() failed for MobileNo - (${request.userInfo.mobileNo}) & error (${err} )` )
+              reject( generateBadResponse( err ));
+            });
+          }else{
+            reject( generateBadResponse( "0106" ));
+          }
+        }, (err) => {
+          log.logAuth(`validateUserLogin() failed for MobileNo - (${request.userInfo.mobileNo}) & error (${err} )` )
+          reject( generateBadResponse( err ));
+        });
       }else{
         reject( generateBadResponse( "0102" ));
       }
     }, (err) => {
       log.logAuth(`validateUser() failed for MobileNo - (${request.userInfo.mobileNo})` )
-      reject( generateBadResponse( err ));
-    }).then( ( rows )  => {
-      log.logAuth(`validateUserLogin() sucess for MobileNo - (${request.userInfo.mobileNo}) & rows ${JSON.stringify(rows)}` )
-      loginUser = rows
-      if( rows.length !== 0 ){
-        return db.updateLoginInfo(loginUser);
-      }else{
-        reject( generateBadResponse( "0106" ));
-      }
-    }, (err) => {
-      log.logAuth(`validateUserLogin() failed for MobileNo - (${request.userInfo.mobileNo}) & error (${err} )` )
-      reject( generateBadResponse( err ));
-    }).then( ( rows )  => {
-      log.logAuth(`updateLoginInfo() success for MobileNo - (${request.userInfo.mobileNo})  )` )
-      return db.updateDeviceInfo( request, loginUser );
-    }, (err) => {
-      log.logAuth(`UpdateLastLogin() failed for MobileNo - (${request.userInfo.mobileNo}) & error (${err} )` )
-      reject( generateBadResponse( err ));
-    }).then( ( rows )  => {
-      log.logAuth(`updateDeviceInfo() success for MobileNo - (${request.userInfo.mobileNo})  )` )
-        resolve( generateGoodResponse( loginUser ));
-    }, (err) => {
-      log.logAuth(`updateDeviceInfo() failed for MobileNo - (${request.userInfo.mobileNo}) & error (${err} )` )
       reject( generateBadResponse( err ));
     });
   });
@@ -64,11 +66,34 @@ module.exports.userLogin = ( request  ) => {
 module.exports.userRegistration = ( request  ) => {
   return new Promise( (resolve, reject ) => {
     log.logAuth('Receiving request from server : ' + JSON.stringify(request) );
-    log.logAuth(`userRegistration ( ${request.userInfo.mobileNo} ) on lend_user_info table ` );
-    db.validateUser( request ).then(( rows ) => {
-      log.logAuth(`validateUser() success for mobileNo - (${request.userInfo.mobileNo}) ` );
+    log.logAuth(`userRegistration ( ${request.userInfo.mobileNo} ) on lend_user_info_temp table ` );
+    db.validateUserTemp( request ).then(( rows ) => {
+      log.logAuth(`validateUserTemp() success for mobileNo - (${request.userInfo.mobileNo}) ` );
       if( rows.length === 0 ){
-        return db.insertUserLoginReg( request );
+        return db.insertUserLoginTempReg( request )
+        .then( (userInfo) => {
+          log.logAuth(`insertUserLoginTempReg() success for mobileNo - (${request.userInfo.mobileNo})  and user Id generated is : ${userInfo.insertId}` );
+          var otp = utils.genOtpNum();
+          var encrypt =  utils.base64Encrypt(otp);
+          log.logAuth(` for OTP : ${otp }  base64 encrypt - (${ encrypt })  &  base64 decrypt - (${utils.base64Decrypt(encrypt)})`)
+          return db.genOTP( userInfo.insertId, encrypt )
+            .then( (rows ) => {
+              var message = `${otp} - otp will expire in 1 minute`;
+              utils.sendMail( request.userInfo.emailAddr , "REGISTRATION OTP", message );
+              log.logAuth(`genOTP() success for mobileNo - (${request.userInfo.mobileNo}) ` );
+              console.log("generated otp record otpId check:" + JSON.stringify(rows) );
+              resolve( generateGoodResponse(  `{ "message" : "user registered Successfully", "userId":"${userInfo.insertId}","otpId" :"${rows[rows.length - 1].insertId }" }` ) );
+            }, (err) => {
+              log.logAuth(`genOTP() failed for mobileNo - (${request.userInfo.mobileNo}) ` );
+              log.logAuth( `${err} - for bad response `);
+              reject( generateBadResponse( err ));
+            } );
+
+        }, (err) => {
+          log.logAuth(`insertUserLoginTempReg() failed for mobileNo - (${request.userInfo.mobileNo}) ` );
+          log.logAuth( `${err} - for bad response `);
+          reject( generateBadResponse( err ));
+        });
       }else{
         reject( generateBadResponse( "0101" ));
       }
@@ -76,15 +101,7 @@ module.exports.userRegistration = ( request  ) => {
       log.logAuth(`userRegistration() failed for mobileNo - (${request.userInfo.mobileNo}) ` );
       log.logAuth( `${err} - for bad response `);
       reject( generateBadResponse( err ));
-    }).then( (result) => {
-      log.logAuth(`insertUserLoginReg() success for mobileNo - (${request.userInfo.mobileNo}) ` );
-      log.logAuth(`${result} - for good response `);
-      resolve( generateGoodResponse(  '{ "message" : "user registered Successfully" }' ) );
-    }, (err) => {
-      log.logAuth(`insertUserLoginReg() failed for mobileNo - (${request.userInfo.mobileNo}) ` );
-      log.logAuth( `${err} - for bad response `);
-      reject( generateBadResponse( err ));
-    });
+    })
   });
 }
 
@@ -106,22 +123,22 @@ module.exports.updateUserKycInfo = ( request  ) => {
     log.logAuth(`updateUserKYC ( ${request.userInfo.userId} ) on lend_user_KYC_info table ` );
     db.updateUserKYC( request ).then(( rows ) => {
       log.logAuth(`updateUserKYC() success for userId - (${request.userInfo.userId}) ` );
-      console.log("updated user kyc rows " + JSON.stringify(rows))
       if( rows.affectedRows === 0 ){
-        return db.insertUserKYC( request );
+        return db.insertUserKYC( request )
+        .then( (result) => {
+          log.logAuth(`insertUserKYC() success for userId - (${request.userInfo.userId}) ` );
+          log.logAuth(`${result} - for good response `);
+          resolve( generateGoodResponse( result ) );
+        }, (err) => {
+          log.logAuth(`insertUserKYC() failed for userId - (${request.userInfo.userId}) ` )
+          log.logAuth( `${err} - for bad response `)
+          reject( generateBadResponse( err ));
+        });
       }else{
         resolve( generateGoodResponse( rows ));
       }
     }, (err) => {
       log.logAuth(`updateUserKYC() failed for userId - (${request.userInfo.userId}) ` )
-      log.logAuth( `${err} - for bad response `)
-      reject( generateBadResponse( err ));
-    }).then( (result) => {
-      log.logAuth(`insertUserKYC() success for userId - (${request.userInfo.userId}) ` );
-      log.logAuth(`${result} - for good response `);
-      resolve( generateGoodResponse( result ) );
-    }, (err) => {
-      log.logAuth(`insertUserKYC() failed for userId - (${request.userInfo.userId}) ` )
       log.logAuth( `${err} - for bad response `)
       reject( generateBadResponse( err ));
     });
@@ -140,19 +157,20 @@ module.exports.updateUserLocation = ( request  ) => {
         utils.notificationService( 'ios' );
         resolve( generateGoodResponse( rows ) );
       }else{
-        return db.insertUserLocationInfo( request );
+        return db.insertUserLocationInfo( request )
+        .then( ( rows )  => {
+          log.logAuth(`insertUserLocationInfo() success for username - (${request.userInfo.userId}) ` );
+          log.logAuth(`${rows} - for good response `);
+          resolve( generateGoodResponse( rows ) );
+        },( error ) => {
+          log.logAuth(`insertUserLocationInfo() failed for username - (${request.userInfo.userId}) ` )
+          reject( generateBadResponse( error ));
+        } );
       }
     }, ( error ) => {
       log.logAuth(`updateUserLocation() failed for username - (${request.userInfo.userId}) ` )
       reject( generateBadResponse( error ));
-    }).then( ( rows )  => {
-      log.logAuth(`insertUserLocationInfo() success for username - (${request.userInfo.userId}) ` );
-      log.logAuth(`${rows} - for good response `);
-      resolve( generateGoodResponse( rows ) );
-    },( error ) => {
-      log.logAuth(`insertUserLocationInfo() failed for username - (${request.userInfo.userId}) ` )
-      reject( generateBadResponse( error ));
-    } );
+    });
   });
 }
 
@@ -161,9 +179,47 @@ module.exports.borrowRequest = ( request  ) => {
     log.logAuth('Receiving request from server : ' + JSON.stringify(request) );
     db.insertBorrowRequest( request ).then(( rows ) => {
       log.logAuth(`insertBorrowRequest() success for userId - (${request.userInfo.userId}) `  );
-      console.log("response after successfuly inserted borrower request : " + JSON.stringify(rows) )
       if( rows.affectedRows !== 0 ){
-        return db.fetchLocationInfo( request );
+        return db.fetchLocationInfo( request )
+        .then( (rows) => {
+          log.logAuth(`fetchLocationInfo() success for userId - (${request.userInfo.userId}) ` );
+          log.logAuth(`${JSON.stringify(rows)} - for good response `);
+          if( rows.length !== 0 ){
+            return db.fetchNearbyUsers( rows[0] )
+            .then( (rows) => {
+              if( rows.length !== 0){
+                log.logAuth(`fetchNearbyUsers() success for userId - (${request.userInfo.userId}) ` );
+                log.logAuth(`${JSON.stringify(rows)} - for good response `);
+                rows.forEach( (row) => {
+                  db.fetchUserInfo( row ).then( ( userInfo ) => {
+                    log.logAuth(`fetchUserInfo() success for userId - (${row.userId}) ` );
+                     utils.notificationService( userInfo[0], request )
+                  } , (err)=>{
+                    log.logAuth(`fetchUserInfo() failed for userId - (${row.userId}) ` );
+                      reject( generateBadResponse(err ));
+                  } );
+                } );
+                resolve( generateGoodResponse( rows ) );
+
+              }else{
+                log.logAuth(`fetchNearbyUsers() failed for userId - (${request.userInfo.userId}) ` )
+                log.logAuth( `0115 - for bad response `)
+                reject( generateBadResponse( "0115" ) );
+
+              }
+            }, (err) => {
+              log.logAuth(`fetchNearbyUsers() failed for userId - (${request.userInfo.userId}) ` )
+              log.logAuth( `${err} - for bad response `)
+              reject( generateBadResponse( err ));
+            });
+          }else{
+            reject( generateBadResponse( "0113" ));
+          }
+        }, (err) => {
+          log.logAuth(`fetchLocationInfo() failed for userId - (${request.userInfo.userId}) ` )
+          log.logAuth( `${err} - for bad response `)
+          reject( generateBadResponse( err ));
+        });
       }else{
         reject( generateBadResponse( "0111" ));
       }
@@ -171,48 +227,10 @@ module.exports.borrowRequest = ( request  ) => {
       log.logAuth(`insertBorrowRequest() failed for userId - (${request.userInfo.userId}) ` )
       log.logAuth( `${err} - for bad response `)
       reject( generateBadResponse( err ));
-    }).then( (rows) => {
-      log.logAuth(`fetchLocationInfo() success for userId - (${request.userInfo.userId}) ` );
-      log.logAuth(`${JSON.stringify(rows)} - for good response `);
-      if( rows.length !== 0 ){
-        return db.fetchNearbyUsers( rows[0] );
-      }else{
-        reject( generateBadResponse( "0113" ));
-      }
-    }, (err) => {
-      log.logAuth(`fetchLocationInfo() failed for userId - (${request.userInfo.userId}) ` )
-      log.logAuth( `${err} - for bad response `)
-      reject( generateBadResponse( err ));
-    }).then( (rows) => {
-      console.log(" rows length of distance fetched users :" + rows.length)
-      if( rows.length !== 0){
-        log.logAuth(`fetchNearbyUsers() success for userId - (${request.userInfo.userId}) ` );
-        log.logAuth(`${JSON.stringify(rows)} - for good response `);
-        rows.forEach( (row) => {
-          console.log("fetchUserInfo - ");
-          db.fetchUserInfo( row ).then( ( userInfo ) => {
-            log.logAuth(`fetchUserInfo() success for userId - (${row.userId}) ` );
-             utils.notificationService( userInfo[0], request )
-          } , (err)=>{
-            log.logAuth(`fetchUserInfo() failed for userId - (${row.userId}) ` );
-              reject( generateBadResponse(err ));
-          } );
-        } );
-        resolve( generateGoodResponse( rows ) );
-
-      }else{
-        log.logAuth(`fetchNearbyUsers() failed for userId - (${request.userInfo.userId}) ` )
-        log.logAuth( `0115 - for bad response `)
-        reject( generateBadResponse( "0115" ) );
-
-      }
-    }, (err) => {
-      log.logAuth(`fetchNearbyUsers() failed for userId - (${request.userInfo.userId}) ` )
-      log.logAuth( `${err} - for bad response `)
-      reject( generateBadResponse( err ));
     });
   });
 }
+
 
 
 module.exports.bidRequest = ( request ) => {
@@ -220,7 +238,6 @@ module.exports.bidRequest = ( request ) => {
     log.logAuth('Receiving request from server for bidRequest : ' + JSON.stringify(request) );
     db.insertBidRequest( request ).then(( rows ) => {
       log.logAuth(`insertBidRequest() success for userId - (${request.userInfo.userId}) `  );
-      console.log("response after successfuly inserted bid request : " + JSON.stringify(rows) )
       if( rows.affectedRows !== 0 ){
         resolve ( generateGoodResponse( '{ "message" : "bid inserted Successfully" }' ));
       }else{
@@ -228,6 +245,33 @@ module.exports.bidRequest = ( request ) => {
       }
     }, (err) => {
       log.logAuth(`insertBorrowRequest() failed for userId - (${request.userInfo.userId}) ` )
+      log.logAuth( `${err} - for bad response `)
+      reject( generateBadResponse( err ));
+    });
+  });
+}
+
+module.exports.validateRegOtp = ( request ) => {
+  return new Promise( (resolve, reject ) => {
+    log.logAuth('Receiving request from server for validateRegOtp() : ' + JSON.stringify(request) );
+    db.validateOtp( request ).then(( rows ) => {
+      if( rows.length !== 0 ){
+        log.logAuth(`validateRegOtp() success for userId - (${request.userInfo.otpId}) `  );
+        return db.insertUserLoginReg( request )
+        .then( ( rows )  => {
+          log.logAuth(`insertUserLoginReg() success for userId - (${request.userInfo.userId}) ` );
+          log.logAuth(`${rows} - for good response `);
+          resolve ( generateGoodResponse( '{ "message" : "Otp Verified Successfully, User Registered successfully" }' ));
+        },( error ) => {
+          log.logAuth(`insertUserLoginReg() failed for userId - (${request.userInfo.userId}) ` )
+          reject( generateBadResponse( error ));
+        } );
+
+      }else{
+        reject( generateBadResponse( "0123" ));
+      }
+    }, (err) => {
+      log.logAuth(`validateRegOtp() failed for userId - (${request.userInfo.otpId}) ` )
       log.logAuth( `${err} - for bad response `)
       reject( generateBadResponse( err ));
     });

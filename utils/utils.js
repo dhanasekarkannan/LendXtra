@@ -1,8 +1,61 @@
 const fs = require('fs');
 const apn = require('./pushNotification/apns.js');
 const moment = require('moment');
+const randomString = require('random-string');
+const nodemailer = require("nodemailer");
+const base64 = require('base-64');
+const utf8 = require('utf8');
+const CryptoJS = require("crypto-js");
+
+
 var now =  moment(new Date()).format("DDMMYYYYHHmmss");
 
+var genAlphaNumRandom = ( length ) => {
+  var x = randomString({
+    length: length,
+    numeric: true,
+    letters: true,
+    special: false
+  });
+  return x;
+}
+var genOtpNum = (  ) => {
+  var x = randomString({
+    length: 6,
+    numeric: true,
+    letters: false,
+    special: false
+  });
+  return x;
+}
+var smtpTransport = nodemailer.createTransport({
+    service: "gmail",
+    host: "smtp.gmail.com",
+    auth: {
+        user: "sendmailtodhana@gmail.com",
+        pass: "natavxlswpavztah"
+    }
+});
+
+var sendMail = ( toEmailId, subject, message ) => {
+  var mailOptions={
+    to : toEmailId,
+    subject : subject,
+    text : message
+}
+console.log(mailOptions);
+smtpTransport.sendMail(mailOptions, function(error, response){
+ if(error){
+        console.log("Message sent failed : "  + error);
+        return false;
+    // res.end("error");
+ }else{
+        console.log("Message sent Success : " + response.message);
+    // res.end("sent");
+      return true;
+     }
+});
+}
 var fetchAppVersion = () => {
   try {
     var appVersionStrings = fs.readFileSync('./config/app.config');
@@ -66,9 +119,21 @@ var fetchErrorDesc = () => {
   }
 };
 
-
+var base64Encrypt = ( text ) => {
+    var bytes = utf8.encode(text);
+    return base64.encode(bytes);
+}
+var base64Decrypt = ( encrypt ) => {
+    var bytes = base64.decode(encrypt);
+    return utf8.decode(bytes);
+}
 module.exports = {
   validateAppVersion,
   getErrorDesc,
   notificationService,
+  sendMail,
+  genOtpNum,
+  genAlphaNumRandom,
+  base64Encrypt,
+  base64Decrypt
 };

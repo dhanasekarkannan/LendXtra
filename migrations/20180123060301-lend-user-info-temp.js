@@ -15,11 +15,12 @@ exports.setup = function(options, seedLink) {
 };
 
 exports.up = function(db) {
-  db.createTable('lend_user_info', {
+  db.createTable('lend_user_info_temp', {
     columns: {
       userId: {
           type: 'int',
           unique: true,
+          autoIncrement: true,
           notNull: true
       },
       emailAddr: {
@@ -85,7 +86,7 @@ exports.up = function(db) {
 };
 
 exports.down = function(db) {
-  db.dropTable('lend_user_info', {
+  db.dropTable('lend_user_info_temp', {
       ifExists: true
   });
   return null;

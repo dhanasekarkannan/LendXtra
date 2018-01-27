@@ -62,17 +62,18 @@ app.post('/updateUserKYC', ( request, response ) => {
   log.logServer( 'Sending request to auth processor =' + JSON.stringify(request.body) );
   auth.updateDeviceInfo(request.body ).then(( resp ) =>{
   log.logServer( 'Receiving Good response from auth processor =' + JSON.stringify(resp) );
-  return auth.updateUserKycInfo(request.body);
-  }, (err) => {
-    log.logServer( 'Receiving Bad response from auth processor =' + JSON.stringify(err) );
-    response.status("200").send(err);
-  }).then(( resp ) =>{
+  return auth.updateUserKycInfo(request.body)
+  .then(( resp ) =>{
   log.logServer( 'Receiving Good response from auth processor =' + JSON.stringify(resp) );
   response.status("200").send(resp);
   }, (err) => {
     log.logServer( 'Receiving Bad response from auth processor =' + JSON.stringify(err) );
     response.status("200").send(err);
   });
+  }, (err) => {
+    log.logServer( 'Receiving Bad response from auth processor =' + JSON.stringify(err) );
+    response.status("200").send(err);
+  })
 });
 app.post('/updateUserLocation', ( request, response ) => {
   log.logServer( 'Sending request to auth processor =' + JSON.stringify(request.body) );
@@ -91,17 +92,18 @@ app.post('/borrowRequest', ( request, response ) => {
     log.logServer( 'Sending request to auth processor =' + JSON.stringify(request.body) );
     auth.updateDeviceInfo(request.body ).then(( resp ) =>{
     log.logServer( 'Receiving Good response from auth processor updateDeviceInfo() =' + JSON.stringify(resp) );
-    return auth.borrowRequest(request.body);
-    }, (err) => {
-      log.logServer( 'Receiving Bad response from auth processor updateDeviceInfo() =' + JSON.stringify(err) );
-      response.status("200").send(err);
-    }).then(( resp ) =>{
+    return auth.borrowRequest(request.body)
+    .then(( resp ) =>{
     log.logServer( 'Receiving Good response from auth processor borrowRequest() =' + JSON.stringify(resp) );
     response.status("200").send(resp);
     }, (err) => {
       log.logServer( 'Receiving Bad response from auth processor borrowRequest() =' + JSON.stringify(err) );
       response.status("200").send(err);
     });
+    }, (err) => {
+      log.logServer( 'Receiving Bad response from auth processor updateDeviceInfo() =' + JSON.stringify(err) );
+      response.status("200").send(err);
+    })
   }else{
 
     log.logServer( ' session unauthorized ' );
@@ -118,17 +120,18 @@ app.post('/bidRequest', ( request, response ) => {
     log.logServer( 'Sending request to auth processor =' + JSON.stringify(request.body) );
     auth.updateDeviceInfo(request.body ).then(( resp ) =>{
     log.logServer( 'Receiving Good response from auth processor updateDeviceInfo() =' + JSON.stringify(resp) );
-    return auth.bidRequest(request.body);
-    }, (err) => {
-      log.logServer( 'Receiving Bad response from auth processor updateDeviceInfo() =' + JSON.stringify(err) );
-      response.status("200").send(err);
-    }).then(( resp ) =>{
+    return auth.bidRequest(request.body)
+    .then(( resp ) =>{
     log.logServer( 'Receiving Good response from auth processor bidRequest() =' + JSON.stringify(resp) );
     response.status("200").send(resp);
     }, (err) => {
       log.logServer( 'Receiving Bad response from auth processor bidRequest() =' + JSON.stringify(err) );
       response.status("200").send(err);
     });
+    }, (err) => {
+      log.logServer( 'Receiving Bad response from auth processor updateDeviceInfo() =' + JSON.stringify(err) );
+      response.status("200").send(err);
+    })
   }else{
 
     log.logServer( ' session unauthorized ' );
@@ -136,6 +139,18 @@ app.post('/bidRequest', ( request, response ) => {
 
   }
 });
+
+app.post('/validateRegOtp', ( request, response ) => {
+  log.logServer( 'Sending request to auth processor validateRegOtp()=' + JSON.stringify(request.body) );
+  auth.validateRegOtp(request.body ).then(( resp ) =>{
+  log.logServer( 'Receiving Good response from auth processor validateRegOtp() =' + JSON.stringify(resp) );
+  response.status("200").send(resp);
+  }, (err) => {
+    log.logServer( 'Receiving Bad response from auth processor validateRegOtp() =' + JSON.stringify(err) );
+    response.status("200").send(err);
+  });
+});
+
 
 app.post('/logout', ( request , response ) => {
 

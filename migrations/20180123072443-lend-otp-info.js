@@ -15,56 +15,21 @@ exports.setup = function(options, seedLink) {
 };
 
 exports.up = function(db) {
-  db.createTable('lend_user_info', {
+  db.createTable('lend_otp_info', {
     columns: {
-      userId: {
+      otpId: {
           type: 'int',
           unique: true,
+          autoIncrement: true,
           notNull: true
       },
-      emailAddr: {
-          type: 'string',
-          unique: true,
-          notNull: true
-      },
-      mobileNo: {
-          type: 'string',
-          unique: true,
-          notNull: true
-      },
-      password: {
+      userId: {
           type: 'string',
           notNull: true
       },
-      deviceToken: {
-          type: 'string',
-          unique: true,
-          notNull: true
-      },
-      deviceId: {
-          type: 'string',
-          unique: true,
-          notNull: true
-      },
-      deviceModel: {
+      otpValue: {
           type: 'string',
           notNull: true
-      },
-      deviceType: {
-          type: 'string',
-          notNull: true
-      },
-      regType: {
-          type: 'string',
-          notNull: true
-      },
-      firstLogin: {
-          type: 'boolean',
-          defaultValue: '0'
-      },
-      lastLogin: {
-          type: 'timestamp',
-          notNull: false
       },
       status: {
         type: 'string',
@@ -85,7 +50,7 @@ exports.up = function(db) {
 };
 
 exports.down = function(db) {
-  db.dropTable('lend_user_info', {
+  db.dropTable('lend_otp_info', {
       ifExists: true
   });
   return null;
